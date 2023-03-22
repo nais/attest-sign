@@ -1,0 +1,28 @@
+name: "attest-sign"
+description: "Generate SBOM, attest and sign docker image"
+inputs:
+  image_ref:
+    description: "image ref, i.e. 'europe-north1-docker.pkg.dev/nais-io/nais/images/canary-deployer@sha256:eac1f85bee008dfe4ca0eadd1f32256946a171b445d129dba8f00cc67d43582b'"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Install cosign"
+      uses: sigstore/cosign-installer@c3667d99424e7e6047999fb6246c0da843953c65 # ratchet:sigstore/cosign-installer@main
+      with:
+        cosign-release: "v2.0.0"
+
+    - name: Create SBOM
+      uses: aquasecurity/trivy-action@8bd2f9fbda2109502356ff8a6a89da55b1ead252 # ratchet:aquasecurity/trivy-action@master
+      with:
+        scan-type: "image"
+        format: "cyclonedx"
+        output: "cyclone.sbom.json"
+        image-ref: "${{ env.image_ref }}"
+
+    - name: Sign and attest image
+      shell: bash
+      run: |
+        cosign sign --yes "${{ env.image_ref }}"
+        cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx "${{ env.image_ref }}"
