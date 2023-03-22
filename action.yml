@@ -1,5 +1,6 @@
 name: "attest-sign"
 icon: "lock"
+color: "green"
 description: "Generate SBOM, attest and sign docker image"
 inputs:
   image_ref:
