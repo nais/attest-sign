@@ -23,10 +23,10 @@ runs:
         scan-type: 'image'
         format: 'cyclonedx'
         output: 'cyclone.sbom.json'
-        image-ref: "${{ env.image_ref }}"
+        image-ref: "${{ inputs.image_ref }}"
 
     - name: 'Sign and attest image'
       shell: 'bash'
       run: |
-        cosign sign --yes "${{ env.image_ref }}"
-        cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx "${{ env.image_ref }}"
+        cosign sign --yes "${{ inputs.image_ref }}"
+        cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx "${{ inputs.image_ref }}"
