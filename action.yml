@@ -9,6 +9,10 @@ inputs:
     description: 'image ref, i.e. "europe-north1-docker.pkg.dev/nais-io/nais/images/canary-deployer@sha256:eac1f85bee008dfe4ca0eadd1f32256946a171b445d129dba8f00cc67d43582b"'
     required: true
 
+  sbom:
+    description: 'existing SBOM in cyclonedx format'
+    default: 'auto-generate-for-me-please.json'
+
 runs:
   using: 'composite'
   steps:
@@ -18,15 +22,16 @@ runs:
         cosign-release: 'v2.0.0'
 
     - name: 'Generate SBOM'
+      if: inputs.sbom == 'auto-generate-for-me-please.json'
       uses: 'aquasecurity/trivy-action@8bd2f9fbda2109502356ff8a6a89da55b1ead252' # ratchet:aquasecurity/trivy-action@master
       with:
         scan-type: 'image'
         format: 'cyclonedx'
-        output: 'cyclone.sbom.json'
+        output: 'auto-generate-for-me-please.json'
         image-ref: "${{ inputs.image_ref }}"
 
     - name: 'Sign and attest image'
       shell: 'bash'
       run: |
         cosign sign --yes "${{ inputs.image_ref }}"
-        cosign attest --yes --predicate cyclone.sbom.json --type cyclonedx "${{ inputs.image_ref }}"
+        cosign attest --yes --predicate "${{ inputs.sbom }}" --type cyclonedx "${{ inputs.image_ref }}"
