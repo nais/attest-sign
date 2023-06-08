@@ -14,7 +14,7 @@ inputs:
     default: 'auto-generate-for-me-please.json'
 outputs:
   sbom:
-    description: 'SBOM in cyclonedx format'
+    description: 'SBOM.json in cyclonedx format'
     value: ${{ steps.set-outputs.outputs.SBOM }}
 runs:
   using: 'composite'
