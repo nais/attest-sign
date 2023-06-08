@@ -12,6 +12,10 @@ inputs:
   sbom:
     description: 'existing SBOM in cyclonedx format'
     default: 'auto-generate-for-me-please.json'
+outputs:
+  sbom:
+    description: 'SBOM in cyclonedx format'
+    value: ${{ steps.set-outputs.outputs.SBOM }}
 runs:
   using: 'composite'
   steps:
@@ -39,3 +43,8 @@ runs:
       run: |
         cosign sign --yes "${{ inputs.image_ref }}"
         cosign attest --yes --predicate "${{ inputs.sbom }}" --type cyclonedx "${{ inputs.image_ref }}"
+    - name: Set outputs
+      shell: bash
+      id: set-outputs
+      run: |
+        echo "SBOM=${{ inputs.sbom }}" >> $GITHUB_OUTPUT
