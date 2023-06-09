@@ -27,7 +27,7 @@ jobs:
       id: "build_push"
       ...
     - name: "Attest and sign"
-      uses: 'nais/attest-sign@v1.0.0'
+      uses: 'nais/attest-sign@v1.x.x'
       with:
         image_ref: ${{ env.registry }}/${{ env.image }}@${{ steps.build_push.outputs.digest }}
 ```
