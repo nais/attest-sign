@@ -30,4 +30,5 @@ jobs:
       uses: 'nais/attest-sign@v1.x.x'
       with:
         image_ref: ${{ env.registry }}/${{ env.image }}@${{ steps.build_push.outputs.digest }}
+        sbom: # By default, the SBOM is generated with Trivy from the image manifest. Can be overridden with a pre-generated SBOM.
 ```
