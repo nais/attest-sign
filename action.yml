@@ -27,9 +27,9 @@ runs:
         fi
       shell: 'bash'
     - name: 'Install cosign'
-      uses: 'sigstore/cosign-installer@1fc5bd396d372bee37d608f955b336615edf79c8' # ratchet:sigstore/cosign-installer@v3.1.2
+      uses: 'sigstore/cosign-installer@9614fae9e5c5eddabb09f90a270fcb487c9f7149' # ratchet:sigstore/cosign-installer@v3.1.2
       with:
-        cosign-release: 'v2.2.1'
+        cosign-release: 'v2.2.2'
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
       uses: 'aquasecurity/trivy-action@91713af97dc80187565512baba96e4364e983601' # ratchet:aquasecurity/trivy-action@0.16.0
