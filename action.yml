@@ -27,12 +27,12 @@ runs:
         fi
       shell: 'bash'
     - name: 'Install cosign'
-      uses: 'sigstore/cosign-installer@9614fae9e5c5eddabb09f90a270fcb487c9f7149' # ratchet:sigstore/cosign-installer@v3.1.2
+      uses: 'sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4' # ratchet:sigstore/cosign-installer@v3.4.0
       with:
-        cosign-release: 'v2.2.2'
+        cosign-release: 'v2.2.3'
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
-      uses: 'aquasecurity/trivy-action@91713af97dc80187565512baba96e4364e983601' # ratchet:aquasecurity/trivy-action@0.16.0
+      uses: 'aquasecurity/trivy-action@d43c1f16c00cfd3978dde6c07f4bbcf9eb6993ca' # ratchet:aquasecurity/trivy-action@0.16.1
       with:
         scan-type: 'image'
         format: 'cyclonedx'
