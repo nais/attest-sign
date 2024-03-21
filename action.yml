@@ -27,7 +27,7 @@ runs:
         fi
       shell: 'bash'
     - name: 'Install cosign'
-      uses: 'sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4' # ratchet:sigstore/cosign-installer@v3.4.0
+      uses: 'sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4' # ratchet:sigstore/cosign-installer@v3
       with:
         cosign-release: 'v2.2.3'
     - name: 'Generate SBOM'
