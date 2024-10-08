@@ -32,3 +32,9 @@ jobs:
         image_ref: ${{ env.registry }}/${{ env.image }}@${{ steps.build_push.outputs.digest }}
         sbom: # By default, the SBOM is generated with Trivy from the image manifest. Can be overridden with a pre-generated SBOM.
 ```
+
+## Functionality
+
+The action uses Trivy to generate an SBOM and cosign to sign it. 
+It implements caching of the `trivy-java-db` and multiple "mirrors/repositories" to avoid being rate-limited by Github and significantly reduce the time used on subsequent runs.
+The [trivy-java-db](https://github.com/aquasecurity/trivy-java-db/pkgs/container/trivy-java-db) is updated weekly so the cache should be updated at least as often.
