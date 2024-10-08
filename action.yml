@@ -28,14 +28,41 @@ runs:
       shell: 'bash'
     - name: 'Install cosign'
       uses: 'sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da' # ratchet:sigstore/cosign-installer@v3
+
+    - uses: oras-project/setup-oras@v1
+      name: Setup ORAS for manifest fetch
+
+    - name: Fetch Trivy Java DB digest
+      shell: 'bash'
+      id: fetch-trivy-java-db-digest
+      run: |
+        TRIVY_JAVA_DB_DIGEST=$(oras manifest fetch europe-north1-docker.pkg.dev/nais-io/remote-ghcr/aquasecurity/trivy-java-db:1 | jq -r '.layers[0].digest')
+        echo "TRIVY_JAVA_DB_DIGEST=$TRIVY_JAVA_DB_DIGEST" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v4
+      id: cache-trivy-java-db
+      with:
+        path: .trivy
+        key: trivy-db-${{ steps.fetch-trivy-java-db-digest.outputs.TRIVY_JAVA_DB_DIGEST }}
+
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
       uses: 'aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8' # ratchet:aquasecurity/trivy-action@0.25.0
+      env:
+        TRIVY_SKIP_DB_UPDATE: "true"
+        TRIVY_JAVA_DB_REPOSITORY: "ghcr.io/aquasecurity/trivy-java-db:1,europe-north1-docker.pkg.dev/nais-io/remote-ghcr/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db"
       with:
         scan-type: 'image'
         format: 'cyclonedx'
         output: 'auto-generate-for-me-please.json'
         image-ref: "${{ inputs.image_ref }}"
+        cache-dir: ".trivy"
+
+      # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
+    - name: Fix .trivy permissions
+      shell: 'bash'
+      run: sudo chown -R $(stat . -c %u:%g) .trivy
+
     - name: 'Sign and attest image'
       shell: 'bash'
       run: |
