@@ -58,6 +58,16 @@ runs:
         image-ref: "${{ inputs.image_ref }}"
         cache-dir: ".trivy"
 
+      # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
+    - name: Fix .trivy permissions
+      shell: 'bash'
+      run: |
+        if [ -d ".trivy" ]; then
+          sudo chown -R $(stat . -c %u:%g) .trivy
+        else
+          echo ".trivy directory does not exist, skipping chown."
+        fi
+
     - name: 'Sign and attest image'
       shell: 'bash'
       run: |
