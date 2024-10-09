@@ -23,7 +23,7 @@ jobs:
           tags: 2
           push: true
       - name: "Attest and sign test image"
-        uses: '.'
+        uses: './'
         with:
           image_ref:  ttl.sh/attest-sign@${{ steps.build_push.outputs.digest }}
           sbom: # By default, the SBOM is generated with Trivy from the image manifest. Can be overridden with a pre-generated SBOM.
