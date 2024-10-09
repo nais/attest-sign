@@ -1,0 +1,33 @@
+name: Test action
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Build container and push to ttl.sh
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v5
+        id: build_push
+        with:
+          repository: ttl.sh
+          context: test
+          # The tag indicates 2 min ttl
+          tags: 2
+          push: true
+      - name: "Attest and sign test image"
+        uses: '.'
+        with:
+          image_ref:  ttl.sh/attest-sign@${{ steps.build_push.outputs.digest }}
+          sbom: # By default, the SBOM is generated with Trivy from the image manifest. Can be overridden with a pre-generated SBOM.
+
+
+
+
