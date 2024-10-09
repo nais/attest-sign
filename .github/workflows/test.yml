@@ -35,8 +35,3 @@ jobs:
         uses: './'
         with:
           image_ref:  ${{ env.IMAGE }}@${{ steps.build_push.outputs.digest }}
-          sbom: # By default, the SBOM is generated with Trivy from the image manifest. Can be overridden with a pre-generated SBOM.
-
-
-
-
