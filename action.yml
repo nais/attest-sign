@@ -29,6 +29,16 @@ runs:
     - name: 'Install cosign'
       uses: 'sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da' # ratchet:sigstore/cosign-installer@v3
 
+    # Check if the 'sbom' input is provided, and output a message if it is empty
+    - name: "Check SBOM input"
+      shell: 'bash'
+      run: |
+        if [ -z "${{ inputs.sbom }}" ]; then
+          echo "SBOM input is empty. Please provide a valid SBOM for attestation."
+        else
+          echo "SBOM input is provided: ${{ inputs.sbom }}"
+        fi
+
     - uses: oras-project/setup-oras@v1
       name: Setup ORAS for manifest fetch
 
