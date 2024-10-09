@@ -12,6 +12,9 @@ inputs:
   sbom:
     description: 'existing SBOM in cyclonedx format'
     default: 'auto-generate-for-me-please.json'
+  trivy_java_db_repositories:
+    description: 'specify the --java-db-repository strings for Trivy'
+    default: "europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1"
 outputs:
   sbom:
     description: 'SBOM.json in cyclonedx format'
@@ -61,7 +64,7 @@ runs:
       uses: 'aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8' # ratchet:aquasecurity/trivy-action@0.25.0
       env:
         TRIVY_SKIP_DB_UPDATE: "true"
-        TRIVY_JAVA_DB_REPOSITORY: "europe-north1-docker.pkg.dev/nais-io/remote-ghcr/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1"
+        TRIVY_JAVA_DB_REPOSITORY: "${{ inputs.trivy_java_db_repositories }}"
       with:
         scan-type: 'image'
         format: 'cyclonedx'
