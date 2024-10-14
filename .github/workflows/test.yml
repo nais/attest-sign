@@ -25,7 +25,7 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: 2
 
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v6
         id: build_push
         with:
           context: test
