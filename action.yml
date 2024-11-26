@@ -42,7 +42,7 @@ runs:
           echo "SBOM input is provided: ${{ inputs.sbom }}"
         fi
 
-    - uses: oras-project/setup-oras@v1
+    - uses: oras-project/setup-oras@9c92598691bfef1424de2f8fae81941568f5889c # ratchet:oras-project/setup-oras@v1
       name: Setup ORAS for manifest fetch
 
     - name: Fetch Trivy Java DB digest
@@ -52,7 +52,7 @@ runs:
         TRIVY_JAVA_DB_DIGEST=$(oras manifest fetch europe-north1-docker.pkg.dev/nais-io/remote-ghcr/aquasecurity/trivy-java-db:1 | jq -r '.layers[0].digest')
         echo "TRIVY_JAVA_DB_DIGEST=$TRIVY_JAVA_DB_DIGEST" >> $GITHUB_OUTPUT
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # ratchet:actions/cache@v4
       id: cache-trivy-java-db
       with:
         path: .trivy
@@ -71,7 +71,7 @@ runs:
         image-ref: "${{ inputs.image_ref }}"
         cache-dir: ".trivy"
 
-      # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
+        # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
       shell: 'bash'
       run: |
