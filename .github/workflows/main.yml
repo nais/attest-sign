@@ -45,22 +45,49 @@ jobs:
 
       - name: Create or Update Tags
         if: success()
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag_prefix: 'v1.'
-          create_annotated_tag: true
-          dry_run: ${{ inputs.dry_run }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch --tags --force
+
+          latest_tag=$(git tag -l 'v1.*' | sort -V | tail -n 1)
+          echo "Latest tag: $latest_tag"
+
+          if [ -z "$latest_tag" ]; then
+            major=1
+            minor=0
+            patch=0
+          else
+            major=$(echo $latest_tag | cut -d'.' -f1 | sed 's/v//')
+            minor=$(echo $latest_tag | cut -d'.' -f2)
+            patch=$(echo $latest_tag | cut -d'.' -f3)
+          fi
+
+          new_patch=$((patch + 1))
+          new_tag="v$major.$minor.$new_patch"
+          echo "New tag: $new_tag"
+
+          git tag -a $new_tag -m "Created new tag: $new_tag"
+
+          if [ "${{ inputs.dry_run }}" == "false" ]; then
+            git push origin $new_tag
+          else
+            echo "Dry run enabled, skipping tag push."
+          fi
 
       - name: Update Floating v1 Tag
         if: success() && inputs.dry_run == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch --tags
-          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-          echo "Updating floating tag v1 to point to $latest_tag"
+          git fetch --tags --force
+          echo "Updating floating tag v1 to point to $new_tag"
           git tag -f v1
           git push origin -f v1
