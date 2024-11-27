@@ -19,8 +19,7 @@ jobs:
     name: Build container and push to ttl.sh
     runs-on: ubuntu-20.04
     permissions:
-      contents: "read"
-      id-token: "write"
+      contents: "write"
     steps:
       - uses: actions/checkout@v4
       - name: Docker meta
