@@ -61,18 +61,21 @@ jobs:
             major=1
             minor=0
             patch=0
+            change_log="Initial release"
           else
             major=$(echo $latest_tag | cut -d'.' -f1 | sed 's/v//')
             minor=$(echo $latest_tag | cut -d'.' -f2)
             patch=$(echo $latest_tag | cut -d'.' -f3)
+          
+            change_log=$(git log --oneline $latest_tag..HEAD)
           fi
-
+          
           new_patch=$((patch + 1))
           new_tag="v$major.$minor.$new_patch"
           echo "New tag: $new_tag"
-
-          git tag -a $new_tag -m "Created new tag: $new_tag"
-
+          
+          git tag -a $new_tag -m "Changes between $latest_tag and $new_tag: \n$change_log"
+          
           if [ "${{ inputs.dry_run }}" == "false" ]; then
             git push origin $new_tag
           else
