@@ -23,6 +23,8 @@ jobs:
       id-token: "write"
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -47,6 +49,7 @@ jobs:
         if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -e
           git config --global user.name "github-actions[bot]"
@@ -76,7 +79,7 @@ jobs:
           
           git tag -a $new_tag -m "Changes between $latest_tag and $new_tag: \n$change_log"
           
-          if [ "${{ inputs.dry_run }}" == "false" ]; then
+          if [ "${DRY_RUN}" == "false" ]; then
             git push origin $new_tag
           else
             echo "Dry run enabled, skipping tag push."

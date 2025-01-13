@@ -23,8 +23,11 @@ runs:
   using: 'composite'
   steps:
     - name: 'Validate image ref'
+      env:
+        IMAGE_REF: ${{ inputs.image_ref }}
       run: |
-        if [[ ${{ inputs.image_ref }} != *@sha256:* ]]; then
+        image_ref="${IMAGE_REF}"
+        if [[ $image_ref != *@sha256:* ]]; then
           echo "Image must be in the form of <image>@<digest>"
           exit 1
         fi
@@ -34,12 +37,15 @@ runs:
 
     # Check if the 'sbom' input is provided, and output a message if it is empty
     - name: "Check SBOM input"
+      env:
+        SBOM: ${{ inputs.sbom }}
       shell: 'bash'
       run: |
-        if [ -z "${{ inputs.sbom }}" ]; then
+        sbom="${SBOM}"
+        if [ -z $sbom ]; then
           echo "SBOM input is empty. Please provide a valid SBOM for attestation."
         else
-          echo "SBOM input is provided: ${{ inputs.sbom }}"
+          echo "SBOM input is provided: $sbom"
         fi
 
     - uses: oras-project/setup-oras@9c92598691bfef1424de2f8fae81941568f5889c # ratchet:oras-project/setup-oras@v1
@@ -82,12 +88,20 @@ runs:
         fi
 
     - name: 'Sign and attest image'
+      env:
+        IMAGE_REF: ${{ inputs.image_ref }}
+        SBOM: ${{ inputs.sbom }}
       shell: 'bash'
       run: |
-        cosign sign --yes "${{ inputs.image_ref }}"
-        cosign attest --yes --predicate "${{ inputs.sbom }}" --type cyclonedx "${{ inputs.image_ref }}"
+        image_ref="${IMAGE_REF}"
+        sbom="${SBOM}"
+        cosign sign --yes "${image_ref}"
+        cosign attest --yes --predicate "$sbom" --type cyclonedx "${image_ref}"
     - name: Set outputs
+      env:
+        SBOM: ${{ inputs.sbom }}
       shell: bash
       id: set-outputs
       run: |-
-        echo "SBOM=${{ inputs.sbom }}" >> $GITHUB_OUTPUT
+        sbom="${SBOM}"
+        echo "SBOM=$sbom" >> $GITHUB_OUTPUT
