@@ -23,8 +23,6 @@ jobs:
       id-token: "write"
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -86,7 +84,7 @@ jobs:
           fi
 
       - name: Update Floating v1 Tag
-        if: success() && inputs.dry_run == 'false'
+        if: success() && env.DRY_RUN == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
