@@ -84,7 +84,7 @@ jobs:
           fi
 
       - name: Update Floating v1 Tag
-        if: success() && env.DRY_RUN == 'false'
+        if: success() && inputs.dry_run == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
