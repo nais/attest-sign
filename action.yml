@@ -33,7 +33,7 @@ runs:
         fi
       shell: 'bash'
     - name: 'Install cosign'
-      uses: 'sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da' # ratchet:sigstore/cosign-installer@v3
+      uses: 'sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a' # ratchet:sigstore/cosign-installer@v3
 
     # Check if the 'sbom' input is provided, and output a message if it is empty
     - name: "Check SBOM input"
@@ -58,7 +58,7 @@ runs:
         TRIVY_JAVA_DB_DIGEST=$(oras manifest fetch europe-north1-docker.pkg.dev/nais-io/remote-ghcr/aquasecurity/trivy-java-db:1 | jq -r '.layers[0].digest')
         echo "TRIVY_JAVA_DB_DIGEST=$TRIVY_JAVA_DB_DIGEST" >> $GITHUB_OUTPUT
 
-    - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # ratchet:actions/cache@v4
+    - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # ratchet:actions/cache@v4
       id: cache-trivy-java-db
       with:
         path: .trivy
