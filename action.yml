@@ -48,7 +48,7 @@ runs:
           echo "SBOM input is provided: $sbom"
         fi
 
-    - uses: oras-project/setup-oras@8d34698a59f5ffe24821f0b48ab62a3de8b64b20 # ratchet:oras-project/setup-oras@v1
+    - uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # ratchet:oras-project/setup-oras@v1
       name: Setup ORAS for manifest fetch
 
     - name: Fetch Trivy Java DB digest
@@ -66,7 +66,7 @@ runs:
 
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
-      uses: 'aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4' # ratchet:aquasecurity/trivy-action@0.32.0
+      uses: 'aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8' # ratchet:aquasecurity/trivy-action@0.33.1
       env:
         TRIVY_SKIP_DB_UPDATE: "true"
         TRIVY_JAVA_DB_REPOSITORY: "${{ inputs.trivy_java_db_repositories }}"
