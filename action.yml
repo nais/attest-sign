@@ -76,6 +76,8 @@ runs:
         output: 'auto-generate-for-me-please.json'
         image-ref: "${{ inputs.image_ref }}"
         cache-dir: ".trivy"
+        # Pin version to avoid unexpected issues with new releases
+        version: "0.63.0"
 
         # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
