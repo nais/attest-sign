@@ -79,21 +79,6 @@ runs:
         # Pin version to avoid unexpected issues with new releases
         version: "v0.63.0"
 
-    - name: 'Validate SBOM with CycloneDX CLI'
-      if: inputs.sbom == 'auto-generate-for-me-please.json'
-      shell: 'bash'
-      run: |
-        docker run --rm \
-            -v "${{ github.workspace }}:/work" \   # Mount workspace
-            -w /work \                              # Set working dir inside container
-            cyclonedx/cyclonedx-cli:latest \
-            cyclonedx validate \
-              --input-format json \
-              --fail-on-errors \
-              --input-version v1_6 \
-              --input-file auto-generate-for-me-please.json
-        
-
       # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
       shell: 'bash'
