@@ -86,7 +86,7 @@ runs:
       if: inputs.sbom == 'auto-generate-for-me-please.json'
       shell: 'bash'
       run: |
-        mise install cyclonedx
+        mise install cyclonedx@0.29.1
         cyclonedx validate --input-format json --fail-on-errors --input-version v1_6 --input-file auto-generate-for-me-please.json
         
         # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
