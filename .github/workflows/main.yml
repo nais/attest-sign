@@ -1,4 +1,4 @@
-name: Build, Tag, and Push Image
+name: Build, Tag, and Push Image for Attest Sign Integration Test
 
 on:
   push:
@@ -7,43 +7,61 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Set to true for a dry run, false for real tagging"
+        description: "Run in dry-run mode? Runs in dry-run mode by default."
         required: false
-        default: "true"
+        type: boolean
+        default: true
 
 env:
-  IMAGE: ttl.sh/attest-sign
+  IMAGE: europe-north1-docker.pkg.dev/nais-io/nais/images/attest-sign-integration-test
 
 jobs:
   test:
-    name: Build container and push to ttl.sh
+    name: Build container and push to GAR
     runs-on: ubuntu-latest
     permissions:
-      contents: "write"
-      id-token: "write"
+      contents: write
+      id-token: write
+
     steps:
-      - uses: actions/checkout@v5
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE }}
-          tags: 2
+      - name: Checkout source
+        uses: actions/checkout@v5
 
-      - uses: docker/build-push-action@v6
-        id: build_push
-        with:
-          context: test
-          # The tag indicates 2 min ttl
-          tags: ${{ steps.meta.outputs.tags }}
-          push: true
+      - name: Compute next release & deployment tags
+        id: tags
+        run: |
+          set -e
 
-      - name: "Attest and sign test image"
-        uses: './'
-        with:
-          image_ref: ${{ env.IMAGE }}@${{ steps.build_push.outputs.digest }}
+          git fetch --tags --force
 
-      - name: Create or Update Tags
+          latest_tag=$(git tag -l 'v1.*' | sort -V | tail -n 1 || echo "")
+
+          echo "Latest tag: $latest_tag"
+
+          if [ -z "$latest_tag" ]; then
+            major=1
+            minor=0
+            patch=0
+          else
+            major=$(echo "$latest_tag" | cut -d'.' -f1 | sed 's/v//')
+            minor=$(echo "$latest_tag" | cut -d'.' -f2)
+            patch=$(echo "$latest_tag" | cut -d'.' -f3)
+          fi
+
+          new_patch=$((patch + 1))
+          new_tag="v${major}.${minor}.${new_patch}"
+
+          # Timestamp for deployment tag: YYYYMMDD-HHMMSS (UTC)
+          timestamp=$(date -u +"%Y%m%d-%H%M%S")
+          deploy_tag="${new_tag}-${timestamp}"
+
+          echo "Computed release tag:  $new_tag"
+          echo "Computed deploy tag:   $deploy_tag"
+
+          echo "new_tag=${new_tag}" >> $GITHUB_OUTPUT
+          echo "deploy_tag=${deploy_tag}" >> $GITHUB_OUTPUT
+
+      - name: Create or Update Git Tag
         if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,39 +70,41 @@ jobs:
           set -e
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          new_tag="${{ steps.tags.outputs.new_tag }}"
+          echo "Tagging new version: $new_tag"
+          git tag -a "$new_tag" -m "Release $new_tag"
 
-          git fetch --tags --force
-
-          latest_tag=$(git tag -l 'v1.*' | sort -V | tail -n 1)
-          echo "Latest tag: $latest_tag"
-
-          if [ -z "$latest_tag" ]; then
-            major=1
-            minor=0
-            patch=0
-            change_log="Initial release"
-          else
-            major=$(echo $latest_tag | cut -d'.' -f1 | sed 's/v//')
-            minor=$(echo $latest_tag | cut -d'.' -f2)
-            patch=$(echo $latest_tag | cut -d'.' -f3)
-          
-            change_log=$(git log --oneline $latest_tag..HEAD)
-          fi
-          
-          new_patch=$((patch + 1))
-          new_tag="v$major.$minor.$new_patch"
-          echo "New tag: $new_tag"
-          
-          git tag -a $new_tag -m "Changes between $latest_tag and $new_tag: \n$change_log"
-          
-          if [ "${DRY_RUN}" == "false" ]; then
-            git push origin $new_tag
+          if [ "$DRY_RUN" = "false" ]; then
+            git push origin "$new_tag"
           else
             echo "Dry run enabled, skipping tag push."
           fi
 
+      - name: Push docker image to GAR
+        id: docker_build_push
+        uses: nais/docker-build-push@v0
+        with:
+          team: nais
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          salsa: 'false'
+          dockerfile: 'test/Dockerfile'
+
+      # We want to use the new changes
+      - name: Attest and sign test image
+        uses: './'
+        with:
+          image_ref: ${{ env.IMAGE }}@${{ steps.docker_build_push.outputs.digest }}
+
+      - name: Deploy attest-sign-integration-test to NAIS
+        uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-nais-dev
+          RESOURCE: .test/app.yml
+          VAR: image=${{ env.IMAGE }}:${{ steps.tags.outputs.deploy_tag }}
+
       - name: Update Floating v1 Tag
-        if: success() && inputs.dry_run == 'false'
+        if: success() && inputs.dry_run == false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -92,6 +112,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
-          echo "Updating floating tag v1 to point to $new_tag"
-          git tag -f v1
+          new_tag="${{ steps.tags.outputs.new_tag }}"
+          echo "Updating floating tag 'v1' → $new_tag"
+          git tag -f v1 "$new_tag"
           git push origin -f v1

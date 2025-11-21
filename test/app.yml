@@ -1,0 +1,15 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: attest-sign-integration-test
+spec:
+  image: {{ image }}
+  port: 8080
+  ttl: 10m
+  replicas:
+    max: 1
+    min: 1
+  resources:
+    requests:
+      cpu: 2m
+      memory: 16Mi
