@@ -2,7 +2,7 @@
 FROM gcr.io/distroless/static
 
 # Copy a simple script into the container
-COPY hello.sh /hello.sh
+COPY test/hello.sh /hello.sh
 
 # Run the script by default
 CMD ["/bin/sh", "/hello.sh"]
