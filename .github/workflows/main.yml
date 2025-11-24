@@ -55,13 +55,13 @@ jobs:
           timestamp=$(date -u +"%Y%m%d-%H%M%S")
           deploy_tag="${new_tag}-${timestamp}"
 
-          echo "Computed release tag:  $new_tag"
-          echo "Computed deploy tag:   $deploy_tag"
+          echo "Computed release tag: $new_tag"
+          echo "Computed deploy tag:  $deploy_tag"
 
           echo "new_tag=${new_tag}" >> $GITHUB_OUTPUT
           echo "deploy_tag=${deploy_tag}" >> $GITHUB_OUTPUT
 
-      - name: Create or Update Git Tag
+      - name: Create Release Tag
         if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,10 +71,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           new_tag="${{ steps.tags.outputs.new_tag }}"
-          echo "Tagging new version: $new_tag"
+
           git tag -a "$new_tag" -m "Release $new_tag"
 
           if [ "$DRY_RUN" = "false" ]; then
+            echo "Pushing release tag $new_tag"
             git push origin "$new_tag"
           else
             echo "Dry run enabled, skipping tag push."
