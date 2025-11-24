@@ -101,7 +101,7 @@ jobs:
       - name: Deploy attest-sign-integration-test to NAIS
         uses: nais/deploy/actions/deploy@v2
         env:
-          CLUSTER: dev-nais-dev
+          CLUSTER: dev
           RESOURCE: test/nais.yml
           DEPLOY_SERVER: deploy.dev-nais.cloud.nais.io:443
           VAR: image=${{ env.IMAGE }}:${{ steps.tags.outputs.deploy_tag }}
