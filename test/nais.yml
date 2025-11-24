@@ -2,7 +2,7 @@ apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
   name: attest-sign-integration-test
-  namespace: salsa
+  namespace: nais-verification
 spec:
   image: {{ image }}
   port: 8080
