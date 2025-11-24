@@ -87,8 +87,6 @@ jobs:
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.deploy_tag }}
-          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
-          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           salsa: 'false'
           dockerfile: 'test/Dockerfile'
 
