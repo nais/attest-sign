@@ -102,7 +102,7 @@ jobs:
         uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev-nais-dev
-          RESOURCE: .test/app.yml
+          RESOURCE: test/nais.yml
           VAR: image=${{ env.IMAGE }}:${{ steps.tags.outputs.deploy_tag }}
 
       - name: Update Floating v1 Tag
