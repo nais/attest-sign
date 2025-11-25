@@ -88,7 +88,7 @@ jobs:
           team: nais-verification
           tag: ${{ steps.tags.outputs.deploy_tag }}
           salsa: 'false'
-          dockerfile: 'test/Dockerfile'
+          docker_context: 'test'
           project_id: 'nais-management-7178'
           identity_provider: 'projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
 
