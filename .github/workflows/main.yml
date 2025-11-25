@@ -90,7 +90,7 @@ jobs:
           salsa: 'false'
           dockerfile: 'test/Dockerfile'
           project_id: 'nais-management-7178'
-          identity_provider: 'projects/898056957967/718161667033/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
+          identity_provider: 'projects/718161667033/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
 
       # We want to use the new changes
       - name: Attest and sign test image
