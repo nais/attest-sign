@@ -9,8 +9,8 @@ on:
       dry_run:
         description: "Run in dry-run mode? Runs in dry-run mode by default."
         required: false
-        type: boolean
-        default: true
+        type: string
+        default: 'true'
 
 env:
   IMAGE: europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign
@@ -107,7 +107,7 @@ jobs:
           VAR: image=${{ env.IMAGE }}:${{ steps.tags.outputs.deploy_tag }}
 
       - name: Update Floating v1 Tag
-        if: success() && inputs.dry_run == false
+        if: ${{ success() && inputs.dry_run == 'false' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
