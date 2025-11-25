@@ -1,8 +1,6 @@
-# Use the minimal Alpine image as the base
-FROM gcr.io/distroless/static
+FROM alpine:3.22.2
 
-# Copy a simple script into the container
-COPY test/hello.sh /hello.sh
+COPY hello.sh /hello.sh
+RUN chmod +x /hello.sh
 
-# Run the script by default
-CMD ["/bin/sh", "/hello.sh"]
+CMD ["/hello.sh"]
