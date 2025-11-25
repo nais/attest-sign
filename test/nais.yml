@@ -5,12 +5,4 @@ metadata:
   namespace: nais-verification
 spec:
   image: {{ image }}
-  port: 8080
   ttl: 5m
-  replicas:
-    max: 1
-    min: 1
-  resources:
-    requests:
-      cpu: 2m
-      memory: 8Mi
