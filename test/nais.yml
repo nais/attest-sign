@@ -1,16 +1,8 @@
-apiVersion: nais.io/v1alpha1
-kind: Application
+apiVersion: nais.io/v1
+kind: Naisjob
 metadata:
   name: attest-sign-integration-test
   namespace: nais-verification
 spec:
   image: {{ image }}
-  port: 8080
-  ttl: 10m
-  replicas:
-    max: 1
-    min: 1
-  resources:
-    requests:
-      cpu: 2m
-      memory: 16Mi
+  ttl: 5m

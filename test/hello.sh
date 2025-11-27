@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "Hello from minimal test Docker container!"
+echo "Hello from minimal attest-sign integration test Docker container!"
