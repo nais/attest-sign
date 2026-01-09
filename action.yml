@@ -33,7 +33,7 @@ runs:
         fi
       shell: 'bash'
     - name: 'Install cosign'
-      uses: 'sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62' # ratchet:sigstore/cosign-installer@v3
+      uses: 'sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad' # ratchet:sigstore/cosign-installer@v4.0.0
 
     # Check if the 'sbom' input is provided, and output a message if it is empty
     - name: "Check SBOM input"
@@ -79,7 +79,7 @@ runs:
         # Pin version to avoid unexpected issues with new releases
         version: "v0.67.2"
 
-      # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
+        # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
       shell: 'bash'
       run: |

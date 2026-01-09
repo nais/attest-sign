@@ -11,6 +11,11 @@ on:
         required: false
         type: string
         default: 'true'
+      major:
+        type: string
+        required: false
+        description: "Major version number to use for the release tag."
+        default: "1"
 
 env:
   IMAGE: europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign
@@ -25,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
 
       - name: Compute next release & deployment tags
         id: tags
@@ -34,18 +39,17 @@ jobs:
 
           git fetch --tags --force
 
-          latest_tag=$(git tag -l 'v1.*' | sort -V | tail -n 1 || echo "")
-
-          echo "Latest tag: $latest_tag"
+          requested_major="${{ inputs.major }}"
+          latest_tag=$(git tag -l "v${requested_major}.*" | sort -V | tail -n 1 || echo "")
 
           if [ -z "$latest_tag" ]; then
-            major=1
-            minor=0
-            patch=0
+          major="$requested_major"
+          minor=0
+          patch=0
           else
-            major=$(echo "$latest_tag" | cut -d'.' -f1 | sed 's/v//')
-            minor=$(echo "$latest_tag" | cut -d'.' -f2)
-            patch=$(echo "$latest_tag" | cut -d'.' -f3)
+          major=$(echo "$latest_tag" | cut -d'.' -f1 | sed 's/v//')
+          minor=$(echo "$latest_tag" | cut -d'.' -f2)
+          patch=$(echo "$latest_tag" | cut -d'.' -f3)
           fi
 
           new_patch=$((patch + 1))
@@ -83,7 +87,7 @@ jobs:
 
       - name: Push docker image to GAR
         id: docker_build_push
-        uses: nais/docker-build-push@v0
+        uses: nais/docker-build-push@791ebb6f74b82849c742a9bc9c97abe44c6c111f # ratchet:nais/docker-build-push@v0
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.deploy_tag }}
@@ -99,14 +103,14 @@ jobs:
           image_ref: ${{ env.IMAGE }}@${{ steps.docker_build_push.outputs.digest }}
 
       - name: Deploy attest-sign-integration-test to NAIS
-        uses: nais/deploy/actions/deploy@v2
+        uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1 # ratchet:nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev
           RESOURCE: test/nais.yml
           DEPLOY_SERVER: deploy.dev-nais.cloud.nais.io:443
           VAR: image=${{ env.IMAGE }}:${{ steps.tags.outputs.deploy_tag }}
 
-      - name: Update Floating v1 Tag
+      - name: Update Floating v${{ inputs.major }} Tag
         if: ${{ success() && inputs.dry_run == 'false' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -115,7 +119,10 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
+
+          major="${{ inputs.major }}"
           new_tag="${{ steps.tags.outputs.new_tag }}"
-          echo "Updating floating tag 'v1' → $new_tag"
-          git tag -f v1 "$new_tag"
-          git push origin -f v1
+
+          echo "Updating floating tag 'v${major}' → $new_tag"
+          git tag -f "v${major}" "$new_tag"
+          git push origin -f "v${major}"
