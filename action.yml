@@ -77,7 +77,7 @@ runs:
         image-ref: "${{ inputs.image_ref }}"
         cache-dir: ".trivy"
         # Pin version to avoid unexpected issues with new releases
-        version: "v0.67.2"
+        version: "v0.68.2"
 
         # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
@@ -102,13 +102,13 @@ runs:
         echo "=== Component count ==="
         jq '.components | length' auto-generate-for-me-please.json
 
-        echo "=== First 5 components ==="
-        jq '.components[:5]' auto-generate-for-me-please.json
+        echo "=== First 2 components ==="
+        jq '.components[:2]' auto-generate-for-me-please.json
 
     - name: 'Sign and attest image'
       env:
         IMAGE_REF: ${{ inputs.image_ref }}
-      shell: bash
+      shell: 'bash'
       run: |
         image_ref="${IMAGE_REF}"
 
@@ -121,8 +121,8 @@ runs:
         echo "Using SBOM file: $sbom"
         jq '.components | length' "$sbom"
 
-        cosign sign --yes "$image_ref"
-        cosign attest --yes --predicate "$sbom" --type cyclonedx "$image_ref"
+        cosign sign --yes "${image_ref}"
+        cosign attest --yes --predicate "$sbom" --type cyclonedx "${image_ref}"
         
 
     - name: Set outputs
