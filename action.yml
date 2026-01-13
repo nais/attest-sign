@@ -34,6 +34,8 @@ runs:
       shell: 'bash'
     - name: 'Install cosign'
       uses: 'sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad' # ratchet:sigstore/cosign-installer@v4.0.0
+      with:
+        cosign-release: 'v3.0.4'
 
     # Check if the 'sbom' input is provided, and output a message if it is empty
     - name: "Check SBOM input"
@@ -120,7 +122,8 @@ runs:
 
         echo "Using SBOM file: $sbom"
         jq '.components | length' "$sbom"
-
+        
+        cosign version
         cosign sign --yes "${image_ref}"
         cosign attest --yes --predicate "$sbom" --type cyclonedx "${image_ref}"
         
