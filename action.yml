@@ -89,6 +89,22 @@ runs:
           echo ".trivy directory does not exist, skipping chown."
         fi
 
+    - name: Debug SBOM summary
+      if: inputs.sbom == 'auto-generate-for-me-please.json'
+      shell: bash
+      run: |
+        echo "=== SBOM file info ==="
+        ls -lh auto-generate-for-me-please.json
+
+        echo "=== CycloneDX metadata ==="
+        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' auto-generate-for-me-please.json
+
+        echo "=== Component count ==="
+        jq '.components | length' auto-generate-for-me-please.json
+
+        echo "=== First 5 components ==="
+        jq '.components[:5]' auto-generate-for-me-please.json
+
     - name: 'Sign and attest image'
       env:
         IMAGE_REF: ${{ inputs.image_ref }}
