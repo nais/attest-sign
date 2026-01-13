@@ -108,13 +108,23 @@ runs:
     - name: 'Sign and attest image'
       env:
         IMAGE_REF: ${{ inputs.image_ref }}
-        SBOM: ${{ inputs.sbom }}
-      shell: 'bash'
+      shell: bash
       run: |
         image_ref="${IMAGE_REF}"
-        sbom="${SBOM}"
-        cosign sign --yes "${image_ref}"
-        cosign attest --yes --predicate "$sbom" --type cyclonedx "${image_ref}"
+
+        if [ "${{ inputs.sbom }}" = "auto-generate-for-me-please.json" ]; then
+          sbom="auto-generate-for-me-please.json"
+        else
+          sbom="${{ inputs.sbom }}"
+        fi
+
+        echo "Using SBOM file: $sbom"
+        jq '.components | length' "$sbom"
+
+        cosign sign --yes "$image_ref"
+        cosign attest --yes --predicate "$sbom" --type cyclonedx "$image_ref"
+        
+
     - name: Set outputs
       env:
         SBOM: ${{ inputs.sbom }}
