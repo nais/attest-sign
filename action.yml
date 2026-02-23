@@ -68,7 +68,7 @@ runs:
 
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
-      uses: 'aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8' # ratchet:aquasecurity/trivy-action@0.33.1
+      uses: 'aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518' # ratchet:aquasecurity/trivy-action@0.34.1
       env:
         TRIVY_SKIP_DB_UPDATE: "true"
         TRIVY_JAVA_DB_REPOSITORY: "${{ inputs.trivy_java_db_repositories }}"
