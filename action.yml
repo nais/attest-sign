@@ -38,16 +38,20 @@ runs:
         cosign-release: 'v3.0.5'
 
     # Check if the 'sbom' input is provided, and output a message if it is empty
-    - name: "Check SBOM input"
+    - name: "Validate SBOM input"
       env:
         SBOM: ${{ inputs.sbom }}
       shell: 'bash'
       run: |
         sbom="${SBOM}"
-        if [ -z $sbom ]; then
+        if [ -z "$sbom" ]; then
           echo "SBOM input is empty. Please provide a valid SBOM for attestation."
+          exit 1
+        elif [[ ! $sbom =~ ^[a-zA-Z0-9._-]+$ ]]; then
+          echo "Invalid SBOM filename: $sbom"
+          exit 1
         else
-          echo "SBOM input is provided: $sbom"
+          echo "SBOM input is provided and valid: $sbom"
         fi
 
     - uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # ratchet:oras-project/setup-oras@v1
@@ -114,20 +118,13 @@ runs:
       run: |
         image_ref="${IMAGE_REF}"
 
-        # Validate SBOM input: allow only alphanumeric, dash, underscore, dot
-        if [[ ! "${{ inputs.sbom }}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-          echo "Invalid SBOM filename: ${{ inputs.sbom }}"
-          exit 1
-        fi
-
         if [ "${{ inputs.sbom }}" = "auto-generate-for-me-please.json" ]; then
           sbom="auto-generate-for-me-please.json"
         else
           sbom="${{ inputs.sbom }}"
         fi
 
-        echo "Using SBOM file: $sbom"
-        jq '.components | length' "$sbom"
+        echo "Using SBOM file: $sbom" 
 
         cosign version
         cosign sign --yes "${image_ref}"
