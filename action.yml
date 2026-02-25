@@ -114,6 +114,12 @@ runs:
       run: |
         image_ref="${IMAGE_REF}"
 
+        # Validate SBOM input: allow only alphanumeric, dash, underscore, dot
+        if [[ ! "${{ inputs.sbom }}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+          echo "Invalid SBOM filename: ${{ inputs.sbom }}"
+          exit 1
+        fi
+
         if [ "${{ inputs.sbom }}" = "auto-generate-for-me-please.json" ]; then
           sbom="auto-generate-for-me-please.json"
         else
