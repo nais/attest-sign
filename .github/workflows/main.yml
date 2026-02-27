@@ -15,7 +15,7 @@ on:
         type: string
         required: false
         description: "Major version number to use for the release tag."
-        default: "1"
+        default: "2"
 
 env:
   IMAGE: europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign
