@@ -47,8 +47,8 @@ runs:
         if [ -z "$sbom" ]; then
           echo "SBOM input is empty. Please provide a valid SBOM for attestation."
           exit 1
-        elif [[ ! $sbom =~ ^[a-zA-Z0-9._-]+$ ]]; then
-          echo "Invalid SBOM filename: $sbom"
+        elif [[ ! $sbom =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+          echo "Invalid SBOM filename or path: $sbom"
           exit 1
         else
           echo "SBOM input is provided and valid: $sbom"
