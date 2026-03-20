@@ -1,4 +1,4 @@
-FROM alpine:3.22.2
+FROM alpine:3.23.3
 
 COPY hello.sh /hello.sh
 RUN chmod +x /hello.sh
