@@ -19,3 +19,13 @@ updates:
       all-deps:
         patterns:
           - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    groups:
+      all-deps:
+        patterns:
+          - "*"

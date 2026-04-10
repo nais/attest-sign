@@ -35,6 +35,19 @@ jobs:
 
 ## Functionality
 
-The action uses Trivy to generate an SBOM and cosign to sign it. 
+The action uses Trivy to generate an SBOM and cosign to sign it.
 It implements caching of the `trivy-java-db` and multiple "mirrors/repositories" to avoid being rate-limited by Github and significantly reduce the time used on subsequent runs.
 The [trivy-java-db](https://github.com/aquasecurity/trivy-java-db/pkgs/container/trivy-java-db) is updated weekly so the cache should be updated at least as often.
+
+## Architecture
+
+The action is a **composite action** with a Docker inner runner:
+
+- The outer `action.yml` (composite) handles caching (`actions/cache`) and outputs.
+- All heavy lifting — Trivy SBOM generation, `cosign sign`, and `cosign attest` — runs inside a
+  Docker container built from the `Dockerfile` at the repo root.
+- Tools installed in the Docker image (pinned versions):
+  - [cosign](https://github.com/sigstore/cosign) v3.0.5
+  - [trivy](https://github.com/aquasecurity/trivy) v0.69.3
+  - [oras](https://github.com/oras-project/oras) v1.3.1
+- The only external GitHub Action used is `actions/cache` (first-party).

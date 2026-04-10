@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - docker
   workflow_dispatch:
     inputs:
       dry_run:
@@ -19,6 +20,7 @@ on:
 
 env:
   IMAGE: europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign
+  ACTION_IMAGE: ghcr.io/nais/attest-sign
 
 jobs:
   test:
@@ -27,6 +29,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      packages: write
 
     steps:
       - name: Checkout source
@@ -95,6 +98,18 @@ jobs:
           docker_context: 'test'
           project_id: 'nais-management-7178'
           identity_provider: 'projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
+
+      - name: Build and push action Docker image
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker build --platform linux/amd64 \
+            -t "${{ env.ACTION_IMAGE }}:latest" \
+            -t "${{ env.ACTION_IMAGE }}:${{ steps.tags.outputs.deploy_tag }}" \
+            -t "${{ env.ACTION_IMAGE }}:${{ steps.tags.outputs.new_tag }}" \
+            .
+          docker push "${{ env.ACTION_IMAGE }}:latest"
+          docker push "${{ env.ACTION_IMAGE }}:${{ steps.tags.outputs.deploy_tag }}"
+          docker push "${{ env.ACTION_IMAGE }}:${{ steps.tags.outputs.new_tag }}"
 
       # We want to use the new changes
       - name: Attest and sign test image
