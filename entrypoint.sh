@@ -22,6 +22,11 @@ else
   echo "SBOM input is provided and valid: ${SBOM}"
 fi
 
+# Start signing in background while trivy runs in parallel
+cosign sign --yes "${IMAGE_REF}" > /tmp/cosign-sign.log 2>&1 &
+SIGN_PID=$!
+trap 'kill "$SIGN_PID" 2>/dev/null; wait "$SIGN_PID" 2>/dev/null || true' EXIT
+
 # Generate SBOM with Trivy if not provided
 if [ "${SBOM}" = "auto-generate-for-me-please.json" ]; then
   echo "Generating SBOM with Trivy..."
@@ -49,6 +54,9 @@ fi
 
 echo "Using SBOM file: ${SBOM}"
 
-cosign version
-cosign sign --yes "${IMAGE_REF}"
+# Wait for background sign to complete; propagates non-zero exit under set -e
+wait $SIGN_PID
+echo "=== cosign sign output ==="
+cat /tmp/cosign-sign.log
+trap - EXIT
 cosign attest --yes --predicate "${SBOM}" --type cyclonedx "${IMAGE_REF}"
