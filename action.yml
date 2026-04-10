@@ -73,9 +73,9 @@ runs:
           -e ACTIONS_ID_TOKEN_REQUEST_URL \
           -e ACTIONS_ID_TOKEN_REQUEST_TOKEN \
           $DOCKER_CONFIG_MOUNT \
-          -v "${{ github.workspace }}:/github/workspace" \
+          -v "$GITHUB_WORKSPACE:/github/workspace" \
           -w /github/workspace \
-          -v "${{ github.workspace }}/.trivy:/github/workspace/.trivy" \
+          -v "$GITHUB_WORKSPACE/.trivy:/github/workspace/.trivy" \
           "${ACTION_IMAGE}"
 
     - name: Fix .trivy permissions
