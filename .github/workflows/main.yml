@@ -40,16 +40,22 @@ jobs:
           git fetch --tags --force
 
           requested_major="${{ inputs.major }}"
+          # Validate that requested_major is numeric
+          if ! [[ "$requested_major" =~ ^[0-9]+$ ]]; then
+            echo "Invalid major version: $requested_major"
+            exit 1
+          fi
+
           latest_tag=$(git tag -l "v${requested_major}.*" | sort -V | tail -n 1 || echo "")
 
           if [ -z "$latest_tag" ]; then
-          major="$requested_major"
-          minor=0
-          patch=0
+            major="$requested_major"
+            minor=0
+            patch=0
           else
-          major=$(echo "$latest_tag" | cut -d'.' -f1 | sed 's/v//')
-          minor=$(echo "$latest_tag" | cut -d'.' -f2)
-          patch=$(echo "$latest_tag" | cut -d'.' -f3)
+            major=$(echo "$latest_tag" | cut -d'.' -f1 | sed 's/v//')
+            minor=$(echo "$latest_tag" | cut -d'.' -f2)
+            patch=$(echo "$latest_tag" | cut -d'.' -f3)
           fi
 
           new_patch=$((patch + 1))
@@ -62,8 +68,8 @@ jobs:
           echo "Computed release tag: $new_tag"
           echo "Computed deploy tag:  $deploy_tag"
 
-          echo "new_tag=${new_tag}" >> $GITHUB_OUTPUT
-          echo "deploy_tag=${deploy_tag}" >> $GITHUB_OUTPUT
+          echo "new_tag=${new_tag}" >> "$GITHUB_OUTPUT"
+          echo "deploy_tag=${deploy_tag}" >> "$GITHUB_OUTPUT"
 
       - name: Create Release Tag
         if: success()
@@ -121,6 +127,11 @@ jobs:
           git fetch --tags --force
 
           major="${{ inputs.major }}"
+          # Validate that major is numeric
+          if ! [[ "$major" =~ ^[0-9]+$ ]]; then
+            echo "Invalid major version: $major"
+            exit 1
+          fi
           new_tag="${{ steps.tags.outputs.new_tag }}"
 
           echo "Updating floating tag 'v${major}' → $new_tag"
