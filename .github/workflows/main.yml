@@ -40,12 +40,6 @@ jobs:
           git fetch --tags --force
 
           requested_major="${{ inputs.major }}"
-          # Validate that requested_major is numeric
-          if ! [[ "$requested_major" =~ ^[0-9]+$ ]]; then
-            echo "Invalid major version: $requested_major"
-            exit 1
-          fi
-
           latest_tag=$(git tag -l "v${requested_major}.*" | sort -V | tail -n 1 || echo "")
 
           if [ -z "$latest_tag" ]; then
@@ -127,11 +121,6 @@ jobs:
           git fetch --tags --force
 
           major="${{ inputs.major }}"
-          # Validate that major is numeric
-          if ! [[ "$major" =~ ^[0-9]+$ ]]; then
-            echo "Invalid major version: $major"
-            exit 1
-          fi
           new_tag="${{ steps.tags.outputs.new_tag }}"
 
           echo "Updating floating tag 'v${major}' → $new_tag"
