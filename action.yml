@@ -35,7 +35,7 @@ runs:
     - name: 'Install cosign'
       uses: 'sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003' # ratchet:sigstore/cosign-installer@v4.1.1
       with:
-        cosign-release: 'v3.0.5'
+        cosign-release: 'v3.0.6'
 
     # Check if the 'sbom' input is provided, and output a message if it is empty
     - name: "Validate SBOM input"
