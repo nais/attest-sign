@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # ratchet:actions/checkout@v6
 
       - name: Compute next release & deployment tags
         id: tags
@@ -87,7 +87,7 @@ jobs:
 
       - name: Push docker image to GAR
         id: docker_build_push
-        uses: nais/docker-build-push@751a312f0803eb96a05a41fadf51be19b7be362c # ratchet:nais/docker-build-push@v0
+        uses: nais/docker-build-push@05dbb6091b30bd84279c6d64a45ef8782fd410a5 # ratchet:nais/docker-build-push@v0
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.deploy_tag }}
@@ -103,7 +103,7 @@ jobs:
           image_ref: ${{ env.IMAGE }}@${{ steps.docker_build_push.outputs.digest }}
 
       - name: Deploy attest-sign-integration-test to NAIS
-        uses: nais/deploy/actions/deploy@f507bb08e2686408075a15ef0ffdd02aff8aa13e # ratchet:nais/deploy/actions/deploy@v2
+        uses: nais/deploy/actions/deploy@c55d6073d913975d2dada508bdfefc6427d39867 # ratchet:nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev
           RESOURCE: test/nais.yml
