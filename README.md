@@ -83,13 +83,6 @@ jobs:
 - **Database Caching**: Caches the Trivy Java DB between runs to significantly reduce scan time
 - **Cache Key Strategy**: Uses the Trivy Java DB digest as cache key to automatically update when the database is refreshed (weekly)
 
-## Technical Details
-
-- **SBOM Format**: CycloneDX 1.x JSON
-- **Trivy Version**: v0.71.0
-- **Cosign Version**: v3.0.6
-- **Requires**: Bash, Docker/container runtime, authenticated registry access
-
 ## Security Considerations
 
 - Image references must include a digest (`@sha256:...`) for reproducibility
