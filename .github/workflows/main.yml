@@ -103,7 +103,7 @@ jobs:
           image_ref: ${{ env.IMAGE }}@${{ steps.docker_build_push.outputs.digest }}
 
       - name: Deploy attest-sign-integration-test to NAIS
-        uses: nais/deploy/actions/deploy@c55d6073d913975d2dada508bdfefc6427d39867 # ratchet:nais/deploy/actions/deploy@v2
+        uses: nais/deploy/actions/deploy@5fdd91aaf69bb0d6dd5e5118cdacb639f487b93b # ratchet:nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev
           RESOURCE: test/nais.yml
