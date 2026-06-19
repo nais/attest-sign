@@ -65,7 +65,6 @@ jobs:
 
   slsa_provenance:
     name: Generate SLSA provenance
-    continue-on-error: true
     needs:
       - build
     permissions:
