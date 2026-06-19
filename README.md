@@ -64,10 +64,12 @@ jobs:
       image: ${{ needs.build.outputs.image }}
       digest: ${{ needs.build.outputs.digest }}
       workload_identity_provider: ${{ vars.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
-      service_account: ${{ vars.NAIS_SERVICE_ACCOUNT }}
+      service_account: ${{ vars.GCP_SERVICE_ACCOUNT || vars.NAIS_SERVICE_ACCOUNT }}
 ```
 
 SLSA failure emits a warning and does not block deploy.
+
+Note: set either `GCP_SERVICE_ACCOUNT` or `NAIS_SERVICE_ACCOUNT` repository variable.
 
 ### With pre-generated SBOM
 

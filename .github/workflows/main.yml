@@ -125,7 +125,7 @@ jobs:
       image: ${{ needs.build.outputs.image }}
       digest: ${{ needs.build.outputs.digest }}
       workload_identity_provider: projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider
-      service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      service_account: ${{ vars.GCP_SERVICE_ACCOUNT || vars.NAIS_SERVICE_ACCOUNT }}
 
   deploy:
     name: Deploy attest-sign-integration-test to NAIS
