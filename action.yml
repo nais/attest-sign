@@ -130,7 +130,6 @@ runs:
         cosign sign --yes "${image_ref}"
         cosign attest --yes --predicate "$sbom" --type cyclonedx  "${image_ref}"
 
-
     - name: Set outputs
       env:
         SBOM: ${{ inputs.sbom }}

@@ -1,0 +1,83 @@
+name: SLSA Provenance
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: OCI image name without tag or digest (e.g. europe-north1-docker.pkg.dev/my-project/my-repo/my-image)
+        required: true
+        type: string
+      digest:
+        description: OCI image digest (e.g. sha256:abc123...)
+        required: true
+        type: string
+      workload_identity_provider:
+        description: Full Workload Identity Provider resource name
+        required: false
+        type: string
+        default: ""
+      service_account:
+        description: Google service account email for registry login
+        required: false
+        type: string
+        default: ""
+      continue-on-error:
+        description: Continue workflow even if SLSA generation fails
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      registry-password:
+        required: false
+    outputs:
+      outcome:
+        description: SLSA provenance generation outcome (success or failure)
+        value: ${{ jobs.slsa_provenance.outputs.outcome }}
+
+jobs:
+  slsa_provenance:
+    name: Generate SLSA provenance
+    continue-on-error: ${{ inputs.continue-on-error }}
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0 # ratchet:slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ inputs.image }}
+      digest: ${{ inputs.digest }}
+      continue-on-error: ${{ inputs.continue-on-error }}
+      gcp-workload-identity-provider: ${{ inputs.workload_identity_provider }}
+      gcp-service-account: ${{ inputs.service_account }}
+    secrets:
+      registry-password: ${{ secrets.registry-password }}
+
+  slsa_status:
+    name: Report SLSA provenance status
+    if: ${{ always() }}
+    needs:
+      - slsa_provenance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report outcome
+        shell: bash
+        env:
+          SLSA_OUTCOME: ${{ needs.slsa_provenance.outputs.outcome }}
+        run: |
+          if [ "$SLSA_OUTCOME" = "failure" ]; then
+            echo "::warning::SLSA provenance generation failed. Attest/sign succeeded, workflow continues."
+            {
+              echo "### SLSA provenance"
+              echo
+              echo "- Status: warning"
+              echo "- Outcome: failure"
+              echo "- Deploy impact: none (non-blocking)"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### SLSA provenance"
+              echo
+              echo "- Status: success"
+              echo "- Deploy impact: none (non-blocking)"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

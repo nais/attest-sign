@@ -21,12 +21,19 @@ env:
   IMAGE: europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign
 
 jobs:
-  test:
+  build:
     name: Build container and push to GAR
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
+    outputs:
+      image: ${{ steps.image.outputs.value }}
+      digest: ${{ steps.docker_build_push.outputs.digest }}
+      deploy_tag: ${{ steps.tags.outputs.deploy_tag }}
+      new_tag: ${{ steps.tags.outputs.new_tag }}
+      major: ${{ inputs.major }}
+      dry_run: ${{ inputs.dry_run }}
 
     steps:
       - name: Checkout source
@@ -96,11 +103,42 @@ jobs:
           project_id: 'nais-management-7178'
           identity_provider: 'projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
 
-      # We want to use the new changes
+      - name: Set image output
+        id: image
+        run: echo "value=europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign" >> "$GITHUB_OUTPUT"
+
       - name: Attest and sign test image
         uses: './'
         with:
-          image_ref: ${{ env.IMAGE }}@${{ steps.docker_build_push.outputs.digest }}
+          image_ref: ${{ steps.image.outputs.value }}@${{ steps.docker_build_push.outputs.digest }}
+
+  slsa_provenance:
+    name: Generate SLSA provenance
+    continue-on-error: true
+    needs:
+      - build
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/slsa-provenance.yml
+    with:
+      image: ${{ needs.build.outputs.image }}
+      digest: ${{ needs.build.outputs.digest }}
+      workload_identity_provider: projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider
+      service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+  deploy:
+    name: Deploy attest-sign-integration-test to NAIS
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
 
       - name: Deploy attest-sign-integration-test to NAIS
         uses: nais/deploy/actions/deploy@f507bb08e2686408075a15ef0ffdd02aff8aa13e # ratchet:nais/deploy/actions/deploy@v2
@@ -108,10 +146,10 @@ jobs:
           CLUSTER: dev
           RESOURCE: test/nais.yml
           DEPLOY_SERVER: deploy.dev-nais.cloud.nais.io:443
-          VAR: image=${{ env.IMAGE }}:${{ steps.tags.outputs.deploy_tag }}
+          VAR: image=${{ needs.build.outputs.image }}:${{ needs.build.outputs.deploy_tag }}
 
-      - name: Update Floating v${{ inputs.major }} Tag
-        if: ${{ success() && inputs.dry_run == 'false' }}
+      - name: Update Floating v${{ needs.build.outputs.major }} Tag
+        if: ${{ success() && needs.build.outputs.dry_run == 'false' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -120,8 +158,8 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
 
-          major="${{ inputs.major }}"
-          new_tag="${{ steps.tags.outputs.new_tag }}"
+          major="${{ needs.build.outputs.major }}"
+          new_tag="${{ needs.build.outputs.new_tag }}"
 
           echo "Updating floating tag 'v${major}' → $new_tag"
           git tag -f "v${major}" "$new_tag"

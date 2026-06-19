@@ -1,0 +1,80 @@
+name: Integration Test Attest Sign and SLSA
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker_context:
+        description: Docker build context
+        required: false
+        type: string
+        default: test
+      image_tag:
+        description: Optional custom image tag
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  build:
+    name: Build and push integration test image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.image.outputs.value }}
+      digest: ${{ steps.docker_build_push.outputs.digest }}
+      tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+
+      - name: Compute image tag
+        id: tag
+        shell: bash
+        env:
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          if [ -n "$INPUT_IMAGE_TAG" ]; then
+            tag="$INPUT_IMAGE_TAG"
+          else
+            timestamp=$(date -u +"%Y%m%d-%H%M%S")
+            tag="integration-${timestamp}-${GITHUB_RUN_ID}"
+          fi
+          echo "value=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Push docker image to GAR
+        id: docker_build_push
+        uses: nais/docker-build-push@751a312f0803eb96a05a41fadf51be19b7be362c # ratchet:nais/docker-build-push@v0
+        with:
+          team: nais-verification
+          tag: ${{ steps.tag.outputs.value }}
+          salsa: 'false'
+          docker_context: ${{ inputs.docker_context }}
+          project_id: 'nais-management-7178'
+          identity_provider: 'projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
+
+      - name: Set image output
+        id: image
+        run: echo "value=europe-north1-docker.pkg.dev/nais-management-7178/nais-verification/attest-sign" >> "$GITHUB_OUTPUT"
+
+      - name: Attest and sign test image
+        uses: './'
+        with:
+          image_ref: ${{ steps.image.outputs.value }}@${{ steps.docker_build_push.outputs.digest }}
+
+  slsa_provenance:
+    name: Generate SLSA provenance
+    continue-on-error: true
+    needs:
+      - build
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/slsa-provenance.yml
+    with:
+      image: ${{ needs.build.outputs.image }}
+      digest: ${{ needs.build.outputs.digest }}
+      workload_identity_provider: projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider
+      service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
