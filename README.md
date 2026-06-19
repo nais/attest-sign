@@ -91,7 +91,6 @@ SLSA failure emits a warning and does not block deploy.
 - **Trivy Version**: v0.70.0
 - **Cosign Version**: v3.0.6
 - Signatures and attestations are stored in the OCI registry alongside the image
-
 ## Security Considerations
 
 - Image reference must include a digest (`@sha256:...`) for reproducibility
