@@ -16,11 +16,6 @@ on:
         required: false
         type: string
         default: ""
-      service_account:
-        description: Google service account email for registry login
-        required: false
-        type: string
-        default: ""
       continue-on-error:
         description: Continue workflow even if SLSA generation fails
         required: false
@@ -28,6 +23,8 @@ on:
         default: true
     secrets:
       registry-password:
+        required: false
+      service_account:
         required: false
     outputs:
       outcome:
@@ -48,7 +45,7 @@ jobs:
       digest: ${{ inputs.digest }}
       continue-on-error: ${{ inputs.continue-on-error }}
       gcp-workload-identity-provider: ${{ inputs.workload_identity_provider }}
-      gcp-service-account: ${{ inputs.service_account }}
+      gcp-service-account: ${{ secrets.service_account }}
     secrets:
       registry-password: ${{ secrets.registry-password }}
 

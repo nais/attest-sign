@@ -64,7 +64,8 @@ jobs:
       image: ${{ needs.build.outputs.image }}
       digest: ${{ needs.build.outputs.digest }}
       workload_identity_provider: ${{ vars.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
-      service_account: ${{ vars.NAIS_SERVICE_ACCOUNT }}
+    secrets:
+      service_account: ${{ secrets.NAIS_SERVICE_ACCOUNT }}
 ```
 
 SLSA failure emits a warning and does not block deploy.
