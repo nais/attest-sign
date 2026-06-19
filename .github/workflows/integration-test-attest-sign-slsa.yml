@@ -1,6 +1,14 @@
 name: Integration Test Attest Sign and SLSA
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - action.yml
+      - README.md
+      - .github/workflows/*.yml
+      - test/**
   workflow_dispatch:
     inputs:
       docker_context:
@@ -33,7 +41,7 @@ jobs:
         id: tag
         shell: bash
         env:
-          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag || '' }}
         run: |
           if [ -n "$INPUT_IMAGE_TAG" ]; then
             tag="$INPUT_IMAGE_TAG"
@@ -50,7 +58,7 @@ jobs:
           team: nais-verification
           tag: ${{ steps.tag.outputs.value }}
           salsa: 'false'
-          docker_context: ${{ inputs.docker_context }}
+          docker_context: ${{ inputs.docker_context || 'test' }}
           project_id: 'nais-management-7178'
           identity_provider: 'projects/718161667033/locations/global/workloadIdentityPools/dev-nais-identity-pool/providers/github-oidc-provider'
 
