@@ -34,7 +34,6 @@ on:
 jobs:
   slsa_provenance:
     name: Generate SLSA provenance
-    continue-on-error: ${{ inputs.continue-on-error }}
     permissions:
       actions: read
       id-token: write
