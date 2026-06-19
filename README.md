@@ -87,9 +87,8 @@ SLSA failure emits a warning and does not block deploy.
 
 ## Technical Details
 
-- **SBOM Format**: CycloneDX 1.x JSON
-- **Trivy Version**: v0.70.0
-- **Cosign Version**: v3.0.6
+- SBOM is produced in CycloneDX JSON format.
+- The action uses Trivy for SBOM generation and cosign for signing and attestation.
 - Signatures and attestations are stored in the OCI registry alongside the image
 ## Security Considerations
 
