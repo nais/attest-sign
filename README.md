@@ -18,6 +18,12 @@ A GitHub Action that generates a Software Bill of Materials (SBOM), creates atte
 
 ## Usage
 
+### Default vs Add-on
+
+- **Default (`uses: nais/attest-sign@v2`)**: Generates SBOM, signs image, and attests SBOM.
+- **Add-on (`slsa-provenance.yml`)**: Optional separate job for SLSA provenance.
+- **Behavior**: SLSA is opt-in and non-blocking by default.
+
 ### Basic: SBOM + sign only
 
 ```yaml
@@ -92,6 +98,7 @@ Note: set either `GCP_SERVICE_ACCOUNT` or `NAIS_SERVICE_ACCOUNT` repository vari
 - SBOM is produced in CycloneDX JSON format.
 - The action uses Trivy for SBOM generation and cosign for signing and attestation.
 - Signatures and attestations are stored in the OCI registry alongside the image
+
 ## Security Considerations
 
 - Image reference must include a digest (`@sha256:...`) for reproducibility
