@@ -55,11 +55,13 @@ jobs:
             test/npm-sbom.json
 
       - name: Verify merged SBOM output
+        env:
+          FINAL_SBOM: ${{ steps.attest_sign.outputs.sbom }}
         run: |
           set -e
 
-          sbom='${{ steps.attest_sign.outputs.sbom }}'
-          test "$sbom" = 'merged-sbom.json'
+          sbom="$FINAL_SBOM"
+          test -f "$sbom"
 
           jq -e '.components[] | select(.name == "npm-lib" and .version == "1.2.3")' "$sbom" >/dev/null
 

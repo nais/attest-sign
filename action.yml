@@ -147,7 +147,6 @@ runs:
         fi
 
         final_sbom="$primary_sbom"
-        merged_sbom='merged-sbom.json'
         sboms=("$primary_sbom")
 
         while IFS= read -r sbom; do
@@ -158,6 +157,7 @@ runs:
         EOF
 
         if [ "${#sboms[@]}" -gt 1 ]; then
+          merged_sbom="$(mktemp "${RUNNER_TEMP}/merged-sbom.XXXXXX.json")"
           cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json --output-version v1_6
           final_sbom="$merged_sbom"
         fi
