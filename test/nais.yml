@@ -1,8 +1,8 @@
 apiVersion: nais.io/v1
 kind: Naisjob
 metadata:
-  name: attest-sign-integration-test
+  name: {{ name }}
   namespace: nais-verification
 spec:
   image: {{ image }}
-  ttl: 5m
+  ttl: 10m
