@@ -158,7 +158,7 @@ runs:
         EOF
 
         if [ "${#sboms[@]}" -gt 1 ]; then
-          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json
+          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json --output-version v1_6
           final_sbom="$merged_sbom"
         fi
 
