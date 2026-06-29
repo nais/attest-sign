@@ -46,9 +46,30 @@ jobs:
           docker_context: 'test'
 
       - name: Attest and sign test image
+        id: attest_sign
         uses: './'
         with:
           image_ref: ${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
+          sbom: auto-generate-for-me-please.json
+          additional_sboms: |
+            test/npm-sbom.json
+
+      - name: Verify merged SBOM output
+        env:
+          FINAL_SBOM: ${{ steps.attest_sign.outputs.sbom }}
+        run: |
+          set -e
+
+          sbom="$FINAL_SBOM"
+          test -f "$sbom"
+
+          jq -e '.components[] | select(.name == "npm-lib" and .version == "1.2.3")' "$sbom" >/dev/null
+
+          component_count=$(jq '.components | length' "$sbom")
+          if [ "$component_count" -le 1 ]; then
+            echo "Expected merged SBOM to contain both image and npm components, got $component_count component(s)."
+            exit 1
+          fi
 
       - name: Export image ref
         id: image_ref
