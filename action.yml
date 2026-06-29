@@ -9,6 +9,9 @@ inputs:
       'form <image>@<digest>'
       'image ref, i.e. "europe-north1-docker.pkg.dev/nais-io/nais/images/canary-deployer@sha256:eac1f85bee008dfe4ca0eadd1f32256946a171b445d129dba8f00cc67d43582b"'
     required: true
+  scan_image_ref:
+    description: 'optional image ref to use for Trivy scan'
+    required: false
   sbom:
     description: 'existing SBOM in cyclonedx format'
     default: 'auto-generate-for-me-please.json'
@@ -70,6 +73,16 @@ runs:
         path: .trivy
         key: trivy-db-${{ steps.fetch-trivy-java-db-digest.outputs.TRIVY_JAVA_DB_DIGEST }}
 
+    - name: Resolve scan image ref
+      id: resolve-scan-image-ref
+      shell: bash
+      env:
+        SCAN_IMAGE_REF: ${{ inputs.scan_image_ref }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+      run: |
+        scan_image_ref="${SCAN_IMAGE_REF:-$IMAGE_REF}"
+        echo "scan_image_ref=$scan_image_ref" >> "$GITHUB_OUTPUT"
+
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
       uses: 'aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25' # ratchet:aquasecurity/trivy-action@v0.36.0
@@ -80,7 +93,7 @@ runs:
         scan-type: 'image'
         format: 'cyclonedx'
         output: 'auto-generate-for-me-please.json'
-        image-ref: "${{ inputs.image_ref }}"
+        image-ref: "${{ steps.resolve-scan-image-ref.outputs.scan_image_ref }}"
         cache-dir: ".trivy"
         # Pin version to avoid unexpected issues with new releases
         version: "v0.70.0"
