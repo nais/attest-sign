@@ -162,12 +162,18 @@ runs:
           final_sbom="$merged_sbom"
         fi
 
-        echo "final_sbom=$final_sbom" >> "$GITHUB_OUTPUT"
+        {
+          echo 'final_sbom<<EOF'
+          printf '%s\n' "$final_sbom"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
 
     - name: Debug SBOM summary
+      env:
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
       shell: bash
       run: |
-        sbom='${{ steps.prepare-sbom.outputs.final_sbom }}'
+        sbom="${FINAL_SBOM}"
 
         echo "=== SBOM file info ==="
         ls -lh "$sbom"
@@ -199,8 +205,14 @@ runs:
 
 
     - name: Set outputs
+      env:
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
       shell: bash
       id: set-outputs
       run: |
-        sbom='${{ steps.prepare-sbom.outputs.final_sbom }}'
-        echo "SBOM=$sbom" >> $GITHUB_OUTPUT
+        sbom="${FINAL_SBOM}"
+        {
+          echo 'SBOM<<EOF'
+          printf '%s\n' "$sbom"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
