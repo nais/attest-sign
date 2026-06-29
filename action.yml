@@ -12,6 +12,9 @@ inputs:
   sbom:
     description: 'existing SBOM in cyclonedx format'
     default: 'auto-generate-for-me-please.json'
+  additional_sboms:
+    description: 'newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM'
+    default: ''
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
     default: "europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1"
@@ -54,6 +57,29 @@ runs:
           echo "SBOM input is provided and valid: $sbom"
         fi
 
+    - name: 'Validate additional SBOM inputs'
+      env:
+        ADDITIONAL_SBOMS: ${{ inputs.additional_sboms }}
+      shell: 'bash'
+      run: |
+        while IFS= read -r sbom; do
+          [ -z "$sbom" ] && continue
+
+          if [[ ! $sbom =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+            echo "Invalid SBOM filename or path: $sbom"
+            exit 1
+          fi
+
+          if [ ! -f "$sbom" ]; then
+            echo "SBOM file does not exist: $sbom"
+            exit 1
+          fi
+
+          echo "Additional SBOM input is provided and valid: $sbom"
+        done <<EOF
+        ${ADDITIONAL_SBOMS}
+        EOF
+
     - uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # ratchet:oras-project/setup-oras@v2.0.0
       name: Setup ORAS for manifest fetch
 
@@ -95,34 +121,80 @@ runs:
           echo ".trivy directory does not exist, skipping chown."
         fi
 
+    - name: Install cyclonedx-cli
+      if: inputs.additional_sboms != ''
+      shell: 'bash'
+      run: |
+        set -e
+
+        version='v0.32.0'
+        download_url='https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.32.0/cyclonedx-linux-x64'
+        expected_sha='454879e6a4a405c8a13bff49b8982adcb0596f3019b26b0811c66e4d7f0783e1'
+
+        curl -fsSL "$download_url" -o cyclonedx
+        echo "$expected_sha  cyclonedx" | sha256sum --check --status
+        chmod +x cyclonedx
+        sudo mv cyclonedx /usr/local/bin/cyclonedx
+
+    - name: Prepare final SBOM
+      id: prepare-sbom
+      env:
+        SBOM: ${{ inputs.sbom }}
+        ADDITIONAL_SBOMS: ${{ inputs.additional_sboms }}
+      shell: 'bash'
+      run: |
+        set -e
+
+        if [ "$SBOM" = "auto-generate-for-me-please.json" ]; then
+          primary_sbom='auto-generate-for-me-please.json'
+        else
+          primary_sbom="$SBOM"
+        fi
+
+        final_sbom="$primary_sbom"
+        merged_sbom='merged-sbom.json'
+        sboms=("$primary_sbom")
+
+        while IFS= read -r sbom; do
+          [ -z "$sbom" ] && continue
+          sboms+=("$sbom")
+        done <<EOF
+        ${ADDITIONAL_SBOMS}
+        EOF
+
+        if [ "${#sboms[@]}" -gt 1 ]; then
+          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json
+          final_sbom="$merged_sbom"
+        fi
+
+        echo "final_sbom=$final_sbom" >> "$GITHUB_OUTPUT"
+
     - name: Debug SBOM summary
-      if: inputs.sbom == 'auto-generate-for-me-please.json'
       shell: bash
       run: |
+        sbom='${{ steps.prepare-sbom.outputs.final_sbom }}'
+
         echo "=== SBOM file info ==="
-        ls -lh auto-generate-for-me-please.json
+        ls -lh "$sbom"
 
         echo "=== CycloneDX metadata ==="
-        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' auto-generate-for-me-please.json
+        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' "$sbom"
 
         echo "=== Component count ==="
-        jq '.components | length' auto-generate-for-me-please.json
+        jq '.components | length' "$sbom"
 
         echo "=== First 2 components ==="
-        jq '.components[:2]' auto-generate-for-me-please.json
+        jq '.components[:2]' "$sbom"
 
     - name: 'Sign and attest image'
       env:
         IMAGE_REF: ${{ inputs.image_ref }}
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
       shell: 'bash'
       run: |
         image_ref="${IMAGE_REF}"
 
-        if [ "${{ inputs.sbom }}" = "auto-generate-for-me-please.json" ]; then
-          sbom="auto-generate-for-me-please.json"
-        else
-          sbom="${{ inputs.sbom }}"
-        fi
+        sbom="${FINAL_SBOM}"
 
         echo "Using SBOM file: $sbom" 
 
@@ -132,10 +204,8 @@ runs:
 
 
     - name: Set outputs
-      env:
-        SBOM: ${{ inputs.sbom }}
       shell: bash
       id: set-outputs
       run: |
-        sbom="${SBOM}"
+        sbom='${{ steps.prepare-sbom.outputs.final_sbom }}'
         echo "SBOM=$sbom" >> $GITHUB_OUTPUT
