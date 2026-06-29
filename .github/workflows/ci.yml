@@ -15,6 +15,8 @@ jobs:
     name: Build image and run action
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      image_ref: ${{ steps.image_ref.outputs.image_ref }}
     permissions:
       contents: read
       id-token: write
@@ -48,3 +50,44 @@ jobs:
         uses: './'
         with:
           image_ref: ${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
+
+      - name: Export image ref
+        id: image_ref
+        run: |
+          echo "image_ref=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  deploy-preview:
+    name: Deploy preview job to dev
+    if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # ratchet:actions/checkout@v6
+
+      - name: Compute preview job name
+        id: preview
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -e
+
+          safe_ref=$(printf '%s' "$REF_NAME" | tr '/[:upper:]' '-[:lower:]' | tr -cd 'a-z0-9-')
+          safe_ref=${safe_ref#-}
+          safe_ref=${safe_ref%-}
+          safe_ref=${safe_ref:0:35}
+          name="attest-sign-${safe_ref}-it"
+
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy preview to NAIS
+        uses: nais/deploy/actions/deploy@2d18f050f07b6a007864c6a57070ed915d571beb # ratchet:nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: test/nais.yml
+          VAR: image=${{ needs.validate.outputs.image_ref }},name=${{ steps.preview.outputs.name }}

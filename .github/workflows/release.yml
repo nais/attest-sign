@@ -107,9 +107,8 @@ jobs:
       - name: Deploy attest-sign-integration-test to NAIS
         uses: nais/deploy/actions/deploy@2d18f050f07b6a007864c6a57070ed915d571beb # ratchet:nais/deploy/actions/deploy@v2
         env:
-          CLUSTER: dev
+          CLUSTER: dev-gcp
           RESOURCE: test/nais.yml
-          DEPLOY_SERVER: deploy.dev-nais.cloud.nais.io:443
           VAR: image=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
 
       - name: Update Floating major tag
