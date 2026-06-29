@@ -103,7 +103,7 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 ## Security Considerations
 
 - Image references must include a digest (`@sha256:...`) for reproducibility
-- SBOM input path is validated to prevent directory traversal
+- Provided SBOM files must exist before the action runs, except `auto-generate-for-me-please.json`
 - Missing files in `additional_sboms` fail the action immediately
 - All dependencies (cosign, Trivy, ORAS) are pinned to specific versions
 - Signatures and attestations are stored in the container registry alongside the image

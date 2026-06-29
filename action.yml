@@ -50,8 +50,8 @@ runs:
         if [ -z "$sbom" ]; then
           echo "SBOM input is empty. Please provide a valid SBOM for attestation."
           exit 1
-        elif [[ ! $sbom =~ ^[a-zA-Z0-9._/-]+$ ]]; then
-          echo "Invalid SBOM filename or path: $sbom"
+        elif [ "$sbom" != "auto-generate-for-me-please.json" ] && [ ! -f "$sbom" ]; then
+          echo "SBOM file does not exist: $sbom"
           exit 1
         else
           echo "SBOM input is provided and valid: $sbom"
@@ -64,11 +64,6 @@ runs:
       run: |
         while IFS= read -r sbom; do
           [ -z "$sbom" ] && continue
-
-          if [[ ! $sbom =~ ^[a-zA-Z0-9._/-]+$ ]]; then
-            echo "Invalid SBOM filename or path: $sbom"
-            exit 1
-          fi
 
           if [ ! -f "$sbom" ]; then
             echo "SBOM file does not exist: $sbom"
