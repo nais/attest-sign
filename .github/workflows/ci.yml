@@ -4,10 +4,9 @@ on:
   push:
     branches:
       - '**'
-  pull_request:
 
 concurrency:
-  group: attest-sign-ci-${{ github.event.pull_request.number || github.ref }}
+  group: attest-sign-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
