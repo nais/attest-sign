@@ -1,0 +1,50 @@
+name: CI for Attest Sign
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+concurrency:
+  group: attest-sign-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build image and run action
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # ratchet:actions/checkout@v6
+
+      - name: Compute CI image tag
+        id: tags
+        env:
+          REF_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -e
+
+          safe_ref=$(printf '%s' "$REF_NAME" | tr '/[:upper:]' '-[:lower:]' | tr -cd 'a-z0-9._-')
+          image_tag="ci-${safe_ref}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Push docker image to GAR
+        id: docker_build_push
+        uses: nais/docker-build-push@05dbb6091b30bd84279c6d64a45ef8782fd410a5 # ratchet:nais/docker-build-push@v0
+        with:
+          team: nais-verification
+          tag: ${{ steps.tags.outputs.image_tag }}
+          salsa: 'false'
+          docker_context: 'test'
+
+      - name: Attest and sign test image
+        uses: './'
+        with:
+          image_ref: ${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
