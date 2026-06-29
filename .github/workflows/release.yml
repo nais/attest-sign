@@ -59,7 +59,6 @@ jobs:
           new_patch=$((patch + 1))
           new_tag="v${major}.${minor}.${new_patch}"
 
-          # Timestamp for deployment tag: YYYYMMDD-HHMMSS (UTC)
           timestamp=$(date -u +"%Y%m%d-%H%M%S")
           deploy_tag="${new_tag}-${timestamp}"
 
@@ -98,7 +97,6 @@ jobs:
           salsa: 'false'
           docker_context: 'test'
 
-      # We want to use the new changes
       - name: Attest and sign test image
         uses: './'
         with:
@@ -109,7 +107,7 @@ jobs:
         env:
           CLUSTER: dev-gcp
           RESOURCE: test/nais.yml
-          VAR: image=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
+          VAR: image=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }},name=attest-sign-integration-test
 
       - name: Update Floating major tag
         if: ${{ success() && (inputs.dry_run || 'true') == 'false' }}
