@@ -38,7 +38,7 @@ jobs:
 
       - name: Push docker image to GAR
         id: docker_build_push
-        uses: nais/docker-build-push@05dbb6091b30bd84279c6d64a45ef8782fd410a5 # ratchet:nais/docker-build-push@v0
+        uses: nais/docker-build-push@feature/image-tag-digest-output
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.image_tag }}
@@ -49,7 +49,7 @@ jobs:
         id: attest_sign
         uses: './'
         with:
-          image_ref: ${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
+          image_ref: ${{ steps.docker_build_push.outputs.image }}
           sbom: auto-generate-for-me-please.json
           additional_sboms: |
             test/npm-sbom.json
@@ -74,7 +74,7 @@ jobs:
       - name: Export image ref
         id: image_ref
         run: |
-          echo "image_ref=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          echo "image_ref=${{ steps.docker_build_push.outputs.image }}" >> "$GITHUB_OUTPUT"
 
   deploy-preview:
     name: Deploy preview job to dev
