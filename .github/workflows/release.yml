@@ -90,7 +90,7 @@ jobs:
 
       - name: Push docker image to GAR
         id: docker_build_push
-        uses: nais/docker-build-push@f8bc7437f7549c2b08197152d781b98f8727a08a # ratchet:nais/docker-build-push@v0
+        uses: nais/docker-build-push@31c3a7321909bcb20799fdf46153fec721fd9512 # ratchet:nais/docker-build-push@v0
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.deploy_tag }}
