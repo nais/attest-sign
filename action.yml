@@ -197,11 +197,28 @@ runs:
 
         sbom="${FINAL_SBOM}"
 
-        echo "Using SBOM file: $sbom" 
+        echo "Using SBOM file: $sbom"
 
         cosign version
-        cosign sign --yes "${image_ref}"
-        cosign attest --yes --predicate "$sbom" --type cyclonedx  "${image_ref}"
+
+        retry() {
+          local -r max_attempts=3
+          local attempt=1
+          local delay=5
+          until "$@"; do
+            if (( attempt >= max_attempts )); then
+              echo "cosign failed after ${max_attempts} attempts: $*" >&2
+              return 1
+            fi
+            echo "cosign failed (attempt ${attempt}/${max_attempts}); retrying in ${delay}s..." >&2
+            sleep "$delay"
+            attempt=$(( attempt + 1 ))
+            delay=$(( delay * 3 ))
+          done
+        }
+
+        retry cosign sign --yes "${image_ref}" \
+          && retry cosign attest --yes --predicate "$sbom" --type cyclonedx "${image_ref}"
 
 
     - name: Set outputs
