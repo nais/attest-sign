@@ -100,14 +100,14 @@ jobs:
       - name: Attest and sign test image
         uses: './'
         with:
-          image_ref: ${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
+          image_ref: ${{ steps.docker_build_push.outputs.image }}
 
       - name: Deploy attest-sign-integration-test to NAIS
         uses: nais/deploy/actions/deploy@2d18f050f07b6a007864c6a57070ed915d571beb # ratchet:nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev-gcp
           RESOURCE: test/nais.yml
-          VAR: image=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }},name=attest-sign-integration-test
+          VAR: image=${{ steps.docker_build_push.outputs.image }},name=attest-sign-integration-test
 
       - name: Update Floating major tag
         if: ${{ success() && (inputs.dry_run || 'true') == 'false' }}
