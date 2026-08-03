@@ -74,7 +74,7 @@ jobs:
       - name: Export image ref
         id: image_ref
         run: |
-          echo "image_ref=${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          echo "image_ref=${{ steps.docker_build_push.outputs.image }}" >> "$GITHUB_OUTPUT"
 
   deploy-preview:
     name: Deploy preview job to dev
