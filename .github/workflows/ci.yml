@@ -49,7 +49,7 @@ jobs:
         id: attest_sign
         uses: './'
         with:
-          image_ref: ${{ steps.docker_build_push.outputs.image }}@${{ steps.docker_build_push.outputs.digest }}
+          image_ref: ${{ steps.docker_build_push.outputs.image }}
           sbom: auto-generate-for-me-please.json
           additional_sboms: |
             test/npm-sbom.json
