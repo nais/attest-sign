@@ -80,6 +80,8 @@ jobs:
     name: Build image and run action (Syft SBOM)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      image_ref: ${{ steps.image_ref.outputs.image_ref }}
     permissions:
       contents: read
       id-token: write
@@ -137,6 +139,11 @@ jobs:
             echo "Expected merged SBOM to contain both image and npm components, got $component_count component(s)."
             exit 1
           fi
+
+      - name: Export image ref
+        id: image_ref
+        run: |
+          echo "image_ref=${{ steps.docker_build_push.outputs.image }}" >> "$GITHUB_OUTPUT"
 
   lint-sbom:
     name: SBOM lint script
@@ -197,3 +204,39 @@ jobs:
           CLUSTER: dev-gcp
           RESOURCE: test/nais.yml
           VAR: image=${{ needs.validate.outputs.image_ref }},name=${{ steps.preview.outputs.name }}
+
+  deploy-preview-syft:
+    name: Deploy Syft preview job to dev
+    if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
+    needs: validate-syft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Compute preview job name
+        id: preview
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -e
+
+          safe_ref=$(printf '%s' "$REF_NAME" | tr '/[:upper:]' '-[:lower:]' | tr -cd 'a-z0-9-')
+          safe_ref=${safe_ref#-}
+          safe_ref=${safe_ref%-}
+          safe_ref=${safe_ref:0:33}
+          name="attest-sign-${safe_ref}-syft"
+
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy preview to NAIS
+        uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199 # ratchet:nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: test/nais.yml
+          VAR: image=${{ needs.validate-syft.outputs.image_ref }},name=${{ steps.preview.outputs.name }}
