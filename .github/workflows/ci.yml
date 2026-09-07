@@ -136,6 +136,28 @@ jobs:
             exit 1
           fi
 
+  lint-sbom:
+    name: SBOM lint script
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Clean SBOM passes lint
+        run: ./scripts/lint-sbom.sh test/npm-sbom.json error
+
+      - name: Bad SBOM fails lint in error mode
+        run: |
+          if ./scripts/lint-sbom.sh test/bad-sbom.json error; then
+            echo "expected lint-sbom.sh to fail on test/bad-sbom.json"
+            exit 1
+          fi
+          echo "lint-sbom.sh correctly rejected the bad SBOM"
+
+      - name: Bad SBOM only warns in warn mode
+        run: ./scripts/lint-sbom.sh test/bad-sbom.json warn
+
   deploy-preview:
     name: Deploy preview job to dev
     if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
