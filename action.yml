@@ -12,6 +12,11 @@ inputs:
   sbom:
     description: 'existing SBOM in cyclonedx format'
     default: 'auto-generate-for-me-please.json'
+  sbom_generator:
+    description: |
+      'which tool to use when auto-generating the SBOM: "trivy" (default) or "syft".'
+      'ignored when "sbom" points to a pre-generated file.'
+    default: 'trivy'
   additional_sboms:
     description: 'newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM'
     default: ''
@@ -75,10 +80,28 @@ runs:
         ${ADDITIONAL_SBOMS}
         EOF
 
+    - name: 'Validate SBOM generator input'
+      if: inputs.sbom == 'auto-generate-for-me-please.json'
+      env:
+        SBOM_GENERATOR: ${{ inputs.sbom_generator }}
+      shell: 'bash'
+      run: |
+        case "${SBOM_GENERATOR}" in
+          trivy|syft)
+            echo "Auto-generating SBOM with: ${SBOM_GENERATOR}"
+            ;;
+          *)
+            echo "Invalid sbom_generator: '${SBOM_GENERATOR}'. Must be 'trivy' or 'syft'."
+            exit 1
+            ;;
+        esac
+
     - uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # ratchet:oras-project/setup-oras@v2.0.1
       name: Setup ORAS for manifest fetch
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && inputs.sbom_generator == 'trivy'
 
     - name: Fetch Trivy Java DB digest
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && inputs.sbom_generator == 'trivy'
       shell: 'bash'
       id: fetch-trivy-java-db-digest
       run: |
@@ -87,12 +110,13 @@ runs:
 
     - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v5
       id: cache-trivy-java-db
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && inputs.sbom_generator == 'trivy'
       with:
         path: .trivy
         key: trivy-db-${{ steps.fetch-trivy-java-db-digest.outputs.TRIVY_JAVA_DB_DIGEST }}
 
-    - name: 'Generate SBOM'
-      if: inputs.sbom == 'auto-generate-for-me-please.json'
+    - name: 'Generate SBOM (Trivy)'
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && inputs.sbom_generator == 'trivy'
       uses: 'aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25' # ratchet:aquasecurity/trivy-action@v0.36.0
       env:
         TRIVY_SKIP_DB_UPDATE: "true"
@@ -108,6 +132,7 @@ runs:
 
         # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && inputs.sbom_generator == 'trivy'
       shell: 'bash'
       run: |
         if [ -d ".trivy" ]; then
@@ -115,6 +140,18 @@ runs:
         else
           echo ".trivy directory does not exist, skipping chown."
         fi
+
+    - name: 'Generate SBOM (Syft)'
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && inputs.sbom_generator == 'syft'
+      uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # ratchet:anchore/sbom-action@v0.24.2
+      with:
+        image: "${{ inputs.image_ref }}"
+        # 1.6: Syft defaults to 1.7, which not all CycloneDX consumers accept yet
+        format: 'cyclonedx-json@1.6'
+        output-file: 'auto-generate-for-me-please.json'
+        syft-version: 'v1.51.1'
+        upload-artifact: 'false'
+        upload-release-assets: 'false'
 
     - name: Install cyclonedx-cli
       if: inputs.additional_sboms != ''
