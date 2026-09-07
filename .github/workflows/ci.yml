@@ -96,7 +96,7 @@ jobs:
           set -e
 
           safe_ref=$(printf '%s' "$REF_NAME" | tr '/[:upper:]' '-[:lower:]' | tr -cd 'a-z0-9._-')
-          image_tag="ci-${safe_ref}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-syft"
+          image_tag="ci-${safe_ref}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
 
@@ -106,6 +106,8 @@ jobs:
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.image_tag }}
+          # separate image: test/Dockerfile is deterministic, same digest as the validate job
+          image_suffix: syft
           salsa: 'false'
           docker_context: 'test'
 
