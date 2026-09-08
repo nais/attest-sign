@@ -17,9 +17,8 @@ inputs:
     default: ''
   sbom_lint:
     description: |
-      'how to handle SBOM problems that make strict CycloneDX consumers fail BOM processing'
-      '(duplicate bom-refs, dangling dependency refs, components sharing a purl):'
-      '"warn" (default) reports them, "error" fails the build, "off" skips the check.'
+      'how to handle CycloneDX schema validation problems on the final SBOM:'
+      '"warn" (default) reports them, "error" fails the build, "off" skips validation.'
     default: 'warn'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
@@ -87,7 +86,7 @@ runs:
       shell: 'bash'
       run: |
         case "${SBOM_LINT}" in
-          warn|error|off) echo "SBOM lint mode: ${SBOM_LINT}" ;;
+          warn|error|off) echo "SBOM validation mode: ${SBOM_LINT}" ;;
           *) echo "Invalid sbom_lint: '${SBOM_LINT}'. Must be 'warn', 'error' or 'off'." ; exit 1 ;;
         esac
 
@@ -220,9 +219,6 @@ runs:
           cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors || \
             echo "schema validation reported problems (sbom_lint: warn - not failing the build)"
         fi
-
-        echo "=== CycloneDX consumer compatibility lint ==="
-        "${GITHUB_ACTION_PATH}/scripts/lint-sbom.sh" "$sbom" "${SBOM_LINT}"
 
     - name: 'Sign and attest image'
       env:

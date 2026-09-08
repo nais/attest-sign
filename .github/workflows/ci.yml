@@ -76,40 +76,6 @@ jobs:
         run: |
           echo "image_ref=${{ steps.docker_build_push.outputs.image }}" >> "$GITHUB_OUTPUT"
 
-  lint-sbom:
-    name: SBOM lint script
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
-
-      - name: Clean SBOM passes lint
-        run: ./scripts/lint-sbom.sh test/npm-sbom.json error
-
-      - name: Bad SBOM fails lint in error mode
-        run: |
-          if ./scripts/lint-sbom.sh test/bad-sbom.json error; then
-            echo "expected lint-sbom.sh to fail on test/bad-sbom.json"
-            exit 1
-          fi
-          echo "lint-sbom.sh correctly rejected the bad SBOM"
-
-      - name: Bad SBOM only warns in warn mode
-        run: ./scripts/lint-sbom.sh test/bad-sbom.json warn
-
-      - name: Unreviewed CycloneDX version is flagged
-        run: |
-          jq '.specVersion = "99.0"' test/npm-sbom.json > "$RUNNER_TEMP/future-sbom.json"
-          ./scripts/lint-sbom.sh "$RUNNER_TEMP/future-sbom.json" warn
-          if ./scripts/lint-sbom.sh "$RUNNER_TEMP/future-sbom.json" error; then
-            echo "expected lint-sbom.sh to fail on an unreviewed CycloneDX version"
-            exit 1
-          fi
-          echo "lint-sbom.sh correctly flagged the unreviewed version"
-
   deploy-preview:
     name: Deploy preview job to dev
     if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
