@@ -100,6 +100,16 @@ jobs:
       - name: Bad SBOM only warns in warn mode
         run: ./scripts/lint-sbom.sh test/bad-sbom.json warn
 
+      - name: Unreviewed CycloneDX version is flagged
+        run: |
+          jq '.specVersion = "99.0"' test/npm-sbom.json > "$RUNNER_TEMP/future-sbom.json"
+          ./scripts/lint-sbom.sh "$RUNNER_TEMP/future-sbom.json" warn
+          if ./scripts/lint-sbom.sh "$RUNNER_TEMP/future-sbom.json" error; then
+            echo "expected lint-sbom.sh to fail on an unreviewed CycloneDX version"
+            exit 1
+          fi
+          echo "lint-sbom.sh correctly flagged the unreviewed version"
+
   deploy-preview:
     name: Deploy preview job to dev
     if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}

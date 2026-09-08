@@ -5,6 +5,11 @@
 
 set -euo pipefail
 
+# CycloneDX versions the field assumptions below (bom-ref, dependencies[].ref /
+# dependsOn / provides, purl) have been reviewed against. A newer SBOM is
+# reported so schema drift is visible instead of silently passing.
+REVIEWED_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6"
+
 sbom="${1:?usage: lint-sbom.sh <sbom.json> [warn|error]}"
 mode="${2:-warn}"
 
@@ -13,7 +18,30 @@ if [ ! -f "$sbom" ]; then
   exit 1
 fi
 
+bom_format=$(jq -r '.bomFormat // "unknown"' "$sbom")
+spec_version=$(jq -r '.specVersion // "unknown"' "$sbom")
+
+if [ "$bom_format" != "CycloneDX" ]; then
+  echo "lint-sbom: not a CycloneDX BOM (bomFormat: $bom_format)" >&2
+  exit 1
+fi
+
 problems=0
+
+case " $REVIEWED_SPEC_VERSIONS " in
+  *" $spec_version "*) ;;
+  *)
+    msg="field assumptions reviewed for CycloneDX [$REVIEWED_SPEC_VERSIONS], SBOM is $spec_version - re-check bom-ref/dependencies/purl handling"
+    if [ "$mode" = "error" ]; then
+      echo "ERROR: $msg"
+      problems=1
+    else
+      echo "WARN: $msg"
+    fi
+    ;;
+esac
+
+echo "lint-sbom: CycloneDX $spec_version, $(jq '[.. | objects | select(has("bom-ref"))] | length' "$sbom") bom-refs, $(jq '[.dependencies[]?] | length' "$sbom") dependency nodes"
 
 mapfile -t dupe_refs < <(jq -r '
   [.. | objects | select(has("bom-ref")) | ."bom-ref"]
