@@ -19,6 +19,7 @@ This action automates container image supply chain security by:
 | `image_ref` | ✅ Yes | - | Full image reference in the form `<image>@<digest>` (e.g., `europe-north1-docker.pkg.dev/nais-io/nais/images/app@sha256:abc123...`) |
 | `sbom` | ❌ No | `auto-generate-for-me-please.json` | Path to existing SBOM in CycloneDX format. If not provided, SBOM is auto-generated from the image manifest. |
 | `additional_sboms` | ❌ No | `''` | Newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM before attestation. Missing files fail the action. |
+| `sbom_lint` | ❌ No | `warn` | How to handle SBOM problems that make strict CycloneDX consumers fail BOM processing (duplicate `bom-ref`s, dangling dependency refs, components sharing a `purl`): `warn` reports them, `error` fails the build, `off` skips the check. |
 | `trivy_java_db_repositories` | ❌ No | `europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1` | Comma-separated list of container registries to use for Trivy Java DB mirror fallback |
 
 ## Outputs
@@ -91,8 +92,9 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 2. **Trivy Java DB Caching**: Fetches and caches the Trivy Java database using multiple repository mirrors to avoid rate limiting
 3. **SBOM Generation**: Uses Trivy (v0.70.0) to scan the image and generate a CycloneDX SBOM unless one is provided
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
-5. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
-6. **Output**: Returns the final SBOM path for downstream use
+5. **SBOM Validation**: Unless `sbom_lint: off`, runs CycloneDX schema validation plus a consumer-compatibility lint (`scripts/lint-sbom.sh`) on the final SBOM
+6. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
+7. **Output**: Returns the final SBOM path for downstream use
 
 ### Performance Optimization
 
