@@ -15,6 +15,12 @@ inputs:
   additional_sboms:
     description: 'newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM'
     default: ''
+  sbom_lint:
+    description: |
+      'how the normalized SBOM is validated before attestation:'
+      '"error" (default) fails the build on any CycloneDX schema or lint problem,'
+      '"warn" reports them without failing, "off" skips validation (normalization still runs).'
+    default: 'error'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
     default: "europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1"
@@ -117,6 +123,7 @@ runs:
         fi
 
     - name: Install cyclonedx-cli
+      if: inputs.additional_sboms != '' || inputs.sbom_lint != 'off'
       env:
         ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
@@ -163,10 +170,11 @@ runs:
     - name: Normalize and validate final SBOM
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+        SBOM_LINT: ${{ inputs.sbom_lint }}
         ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"
+        bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM" "$SBOM_LINT"
 
     - name: Debug SBOM summary
       env:
