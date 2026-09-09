@@ -117,7 +117,6 @@ runs:
         fi
 
     - name: Install cyclonedx-cli
-      if: inputs.additional_sboms != ''
       shell: 'bash'
       run: |
         set -e
@@ -167,6 +166,41 @@ runs:
           printf '%s\n' "$final_sbom"
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
+
+    - name: Normalize and validate final SBOM
+      env:
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+      shell: 'bash'
+      run: |
+        set -e
+
+        sbom="${FINAL_SBOM}"
+        normalized="$(mktemp "${RUNNER_TEMP}/normalized-sbom.XXXXXX.json")"
+
+        # Trivy can emit the same package as several components sharing one bom-ref
+        # (e.g. a package present in multiple image layers). That produces duplicate
+        # entries in `dependencies` and `dependencies[].dependsOn`, which CycloneDX
+        # 1.6 requires to be unique, so Dependency-Track rejects the attestation with
+        # a schema-validation error. Collapse the duplicates before signing.
+        # https://github.com/aquasecurity/trivy/discussions/7532
+        jq '
+          (if has("components") then
+            .components |= ( [ .[] | . as $c
+                | ($c["bom-ref"] // $c.purl // ($c.name + "@" + ($c.version // ""))) as $k
+                | {k: $k, c: $c} ]
+              | reduce .[] as $e ({seen: {}, out: []};
+                  if .seen[$e.k] then . else .seen[$e.k] = true | .out += [$e.c] end)
+              | .out )
+          else . end)
+          | (if has("dependencies") then
+            .dependencies |= ( group_by(.ref)
+              | map( .[0] + { dependsOn: ( [ (.[].dependsOn // [])[] ] | unique ) } ) )
+          else . end)
+        ' "$sbom" > "$normalized"
+
+        mv "$normalized" "$sbom"
+
+        cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors
 
     - name: Debug SBOM summary
       env:

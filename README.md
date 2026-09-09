@@ -91,8 +91,9 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 2. **Trivy Java DB Caching**: Fetches and caches the Trivy Java database using multiple repository mirrors to avoid rate limiting
 3. **SBOM Generation**: Uses Trivy (v0.70.0) to scan the image and generate a CycloneDX SBOM unless one is provided
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
-5. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
-6. **Output**: Returns the final SBOM path for downstream use
+5. **SBOM Normalization**: Collapses duplicate components (same `bom-ref`) and de-duplicates `dependencies` / `dependsOn` entries, then validates the result against the CycloneDX schema. Trivy can emit a package as several components sharing one `bom-ref` when it is present in multiple image layers, which makes the BOM invalid and causes downstream consumers such as Dependency-Track to reject the attestation.
+6. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
+7. **Output**: Returns the final SBOM path for downstream use
 
 ### Performance Optimization
 
