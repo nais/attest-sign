@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
 
-          dup_bom_refs=$(jq '[.components[]."bom-ref"] | group_by(.) | map(select(length > 1)) | length' "$sbom")
+          dup_bom_refs=$(jq '[.components[]."bom-ref" | select(. != null)] | group_by(.) | map(select(length > 1)) | length' "$sbom")
           if [ "$dup_bom_refs" -ne 0 ]; then
             echo "Final SBOM contains duplicate bom-ref values; normalization did not run."
             exit 1
