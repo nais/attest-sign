@@ -33,7 +33,9 @@ if [ "$(jq -r '.bomFormat // ""' "$sbom")" != "CycloneDX" ]; then
   exit 1
 fi
 
-normalized="$(mktemp)"
+# Keep the temp file on the same filesystem as the SBOM so the final mv is an
+# atomic rename, not a copy that could partially overwrite the SBOM on failure.
+normalized="$(mktemp "${sbom}.normalized.XXXXXX")"
 trap 'rm -f "$normalized"' EXIT
 
 jq '
