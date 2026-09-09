@@ -9,11 +9,9 @@
 
 set -euo pipefail
 
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo="$(dirname "$here")"
+# shellcheck source=test/lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 lint="$repo/scripts/lint-sbom.sh"
-
-fail() { echo "FAIL: $1"; exit 1; }
 
 # Clean SBOM passes in every mode.
 bash "$lint" "$here/npm-sbom.json" error >/dev/null || fail "clean SBOM should pass lint in error mode"
@@ -31,6 +29,12 @@ bash "$lint" "$here/dangling-ref-sbom.json" off >/dev/null || fail "off mode sho
 
 # Default mode is warn.
 bash "$lint" "$here/dangling-ref-sbom.json" >/dev/null || fail "default mode should be warn (non-fatal)"
+
+# A schema-invalid SBOM fails error mode but never fails warn mode.
+if bash "$lint" "$here/duplicate-sbom.json" error >/dev/null 2>&1; then
+  fail "schema-invalid SBOM should fail lint in error mode"
+fi
+bash "$lint" "$here/duplicate-sbom.json" warn >/dev/null || fail "warn mode should not fail on a schema-invalid SBOM"
 
 # Invalid mode is rejected.
 if bash "$lint" "$here/npm-sbom.json" bogus >/dev/null 2>&1; then
