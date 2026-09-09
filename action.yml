@@ -170,9 +170,10 @@ runs:
     - name: Normalize and validate final SBOM
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+        ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "${{ github.action_path }}/scripts/normalize-sbom.sh" "${FINAL_SBOM}"
+        bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"
 
     - name: Debug SBOM summary
       env:
