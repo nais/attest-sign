@@ -1,0 +1,68 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "container",
+      "bom-ref": "pkg:oci/example@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "name": "example",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/certifi@2026.6.17",
+      "name": "certifi",
+      "version": "2026.6.17",
+      "purl": "pkg:pypi/certifi@2026.6.17",
+      "properties": [
+        { "name": "aquasecurity:trivy:LayerDigest", "value": "sha256:aaaa" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/certifi@2026.6.17",
+      "name": "certifi",
+      "version": "2026.6.17",
+      "purl": "pkg:pypi/certifi@2026.6.17",
+      "properties": [
+        { "name": "aquasecurity:trivy:LayerDigest", "value": "sha256:bbbb" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/requests@2.34.2",
+      "name": "requests",
+      "version": "2.34.2",
+      "purl": "pkg:pypi/requests@2.34.2"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:oci/example@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "dependsOn": [
+        "pkg:pypi/certifi@2026.6.17",
+        "pkg:pypi/certifi@2026.6.17",
+        "pkg:pypi/requests@2.34.2"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/requests@2.34.2",
+      "dependsOn": [
+        "pkg:pypi/certifi@2026.6.17"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/requests@2.34.2",
+      "dependsOn": [
+        "pkg:pypi/certifi@2026.6.17"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/certifi@2026.6.17",
+      "dependsOn": []
+    }
+  ]
+}
