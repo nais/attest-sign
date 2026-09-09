@@ -17,11 +17,10 @@ inputs:
     default: ''
   sbom_lint:
     description: |
-      'how the SBOM is handled before attestation:'
-      '"warn" (default) normalizes it and reports CycloneDX schema / lint problems without failing,'
-      '"error" normalizes it and fails the build on any problem,'
-      '"off" skips normalization and validation (SBOM merge still runs if additional_sboms is set).'
-
+      how the SBOM is handled before attestation:
+      warn (default) normalizes it and reports CycloneDX schema / lint problems without failing,
+      error normalizes it and fails the build on any problem,
+      off skips normalization and validation (SBOM merge still runs if additional_sboms is set).
     default: 'warn'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'

@@ -12,8 +12,10 @@
 # What it normalizes (note: rewrites JSON formatting and may reorder arrays):
 #   - components: drop entries after the first that share a `bom-ref` (bom-ref
 #     must be unique per spec; components without a bom-ref are left untouched)
-#   - dependencies: merge entries that share a `ref`, unioning their `dependsOn`
-#   - dependsOn: de-duplicate each array
+#   - dependencies: merge entries that share a `ref`, unioning `dependsOn` and
+#     `provides`
+#   - dependsOn / provides: de-duplicate each array, on merged and passthrough
+#     entries alike
 #
 # Writes via a temp file, so a jq failure leaves the original SBOM untouched.
 #
@@ -50,13 +52,25 @@ jq '
         end)
     | .out;
 
-  # Merge dependency entries that share a ref (union of dependsOn); pass through
-  # any malformed entry that has no ref.
+  # Merge dependency entries that share a ref, unioning the graph-edge arrays
+  # (dependsOn, and provides when any entry carries it) so nothing is lost when
+  # the merge keeps only non-array fields from the first entry. Malformed
+  # entries with no ref pass through, still with their edge arrays de-duplicated.
+  def dedupe_edges:
+    ( if has("dependsOn") then .dependsOn = ((.dependsOn // []) | unique) else . end )
+    | ( if has("provides") then .provides = ((.provides // []) | unique) else . end );
+  def union_edge($group; $field):
+    if any($group[]; has($field))
+    then { ($field): ( [ ($group[][$field] // [])[] ] | unique ) }
+    else {} end;
   def dedupe_dependencies:
     ( [ .[] | select(.ref != null) ]
       | group_by(.ref)
-      | map( .[0] + { dependsOn: ( [ (.[].dependsOn // [])[] ] | unique ) } ) )
-    + [ .[] | select(.ref == null) ];
+      | map(
+          .[0]
+          + union_edge(.; "dependsOn")
+          + union_edge(.; "provides") ) )
+    + [ .[] | select(.ref == null) | dedupe_edges ];
 
   (if (.components | type) == "array" then .components |= dedupe_components else . end)
   | (if (.dependencies | type) == "array" then .dependencies |= dedupe_dependencies else . end)
