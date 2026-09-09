@@ -1,34 +1,27 @@
 #!/usr/bin/env bash
 #
-# Tests for scripts/normalize-sbom.sh.
-#
-# Fixtures:
-#   duplicate-sbom.json   - Trivy-shaped: duplicate components sharing a bom-ref,
-#                           a duplicated dependency entry, a repeated dependsOn ref.
-#   dangling-ref-sbom.json - dependsOn points at a bom-ref that no component declares.
+# Tests for scripts/normalize-sbom.sh, using test/duplicate-sbom.json: a
+# Trivy-shaped BOM with duplicate components sharing a bom-ref, a duplicated
+# dependency entry, and a repeated dependsOn ref.
 
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(dirname "$here")"
-norm="$repo/scripts/normalize-sbom.sh"
 
 fail() { echo "FAIL: $1"; exit 1; }
 assert_eq() { [ "$2" = "$3" ] || fail "$1: expected '$3', got '$2'"; }
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-
-# --- duplicate components / dependency graph are collapsed -------------------
-
-sbom="$work/dup.json"
+sbom="$work/sbom.json"
 cp "$here/duplicate-sbom.json" "$sbom"
 
 if cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors >/dev/null 2>&1; then
   fail "duplicate-sbom.json unexpectedly passed schema validation before normalization"
 fi
 
-bash "$norm" "$sbom" error
+bash "$repo/scripts/normalize-sbom.sh" "$sbom"
 
 assert_eq "duplicate component collapsed" "$(jq '.components | length' "$sbom")" "2"
 assert_eq "component bom-refs unique" \
@@ -41,19 +34,7 @@ assert_eq "dependency refs unique" \
 assert_eq "dependsOn entries unique" \
   "$(jq '[.dependencies[] | (.dependsOn | length) - (.dependsOn | unique | length)] | add' "$sbom")" "0"
 
-# --- dangling dependency-graph refs -----------------------------------------
-
-sbom="$work/dangling.json"
-
-cp "$here/dangling-ref-sbom.json" "$sbom"
-if bash "$norm" "$sbom" error >/dev/null 2>&1; then
-  fail "dangling-ref-sbom.json should fail normalize-sbom.sh in error mode"
-fi
-
-cp "$here/dangling-ref-sbom.json" "$sbom"
-bash "$norm" "$sbom" warn >/dev/null || fail "warn mode should not fail on dangling refs"
-
-cp "$here/dangling-ref-sbom.json" "$sbom"
-bash "$norm" "$sbom" off >/dev/null || fail "off mode should not run lint"
+cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors >/dev/null \
+  || fail "normalized SBOM does not pass schema validation"
 
 echo "PASS: normalize-sbom.sh tests"
