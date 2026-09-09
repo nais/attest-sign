@@ -1,0 +1,36 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "null-purl-fixture",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "lib-a",
+      "version": "1.0.0",
+      "purl": ""
+    },
+    {
+      "type": "library",
+      "name": "lib-b",
+      "version": "2.0.0",
+      "purl": ""
+    },
+    {
+      "type": "library",
+      "name": "lib-c",
+      "version": "3.0.0"
+    },
+    {
+      "type": "library",
+      "name": "lib-d",
+      "version": "4.0.0"
+    }
+  ]
+}
