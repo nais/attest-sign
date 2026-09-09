@@ -37,6 +37,11 @@
       "name": "requests",
       "version": "2.34.2",
       "purl": "pkg:pypi/requests@2.34.2"
+    },
+    {
+      "type": "library",
+      "name": "no-bom-ref-lib",
+      "version": "0.0.0"
     }
   ],
   "dependencies": [

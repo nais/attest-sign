@@ -9,8 +9,13 @@
 # schema-validation error and the affected workload never gets a vulnerability
 # report. See https://github.com/aquasecurity/trivy/discussions/7532
 #
-# Collapses duplicate components by bom-ref, de-duplicates the dependency graph
-# by ref (unioning dependsOn), and de-duplicates each dependsOn array.
+# What it changes, and nothing else:
+#   - components: drop entries after the first that share a `bom-ref` (bom-ref
+#     must be unique per spec; components without a bom-ref are left untouched)
+#   - dependencies: merge entries that share a `ref`, unioning their `dependsOn`
+#   - dependsOn: de-duplicate each array
+#
+# Writes via a temp file, so a jq failure leaves the original SBOM untouched.
 #
 # Usage: normalize-sbom.sh <sbom.json>
 
@@ -32,18 +37,27 @@ normalized="$(mktemp)"
 trap 'rm -f "$normalized"' EXIT
 
 jq '
-  (if has("components") then
-    .components |= ( [ .[] | . as $c
-        | ($c["bom-ref"] // $c.purl // ($c.name + "@" + ($c.version // ""))) as $k
-        | {k: $k, c: $c} ]
-      | reduce .[] as $e ({seen: {}, out: []};
-          if .seen[$e.k] then . else .seen[$e.k] = true | .out += [$e.c] end)
-      | .out )
-  else . end)
-  | (if has("dependencies") then
-    .dependencies |= ( group_by(.ref)
+  # Keep every component that has no bom-ref, or is the first occurrence of its
+  # bom-ref. Only exact bom-ref collisions (already invalid per spec) are dropped.
+  def dedupe_components:
+    reduce .[] as $c ({seen: {}, out: []};
+      ($c["bom-ref"]) as $ref
+      | if $ref != null and (.seen[$ref] // false)
+        then .
+        else (if $ref != null then .seen[$ref] = true else . end) | .out += [$c]
+        end)
+    | .out;
+
+  # Merge dependency entries that share a ref (union of dependsOn); pass through
+  # any malformed entry that has no ref.
+  def dedupe_dependencies:
+    ( [ .[] | select(.ref != null) ]
+      | group_by(.ref)
       | map( .[0] + { dependsOn: ( [ (.[].dependsOn // [])[] ] | unique ) } ) )
-  else . end)
+    + [ .[] | select(.ref == null) ];
+
+  (if (.components | type) == "array" then .components |= dedupe_components else . end)
+  | (if (.dependencies | type) == "array" then .dependencies |= dedupe_dependencies else . end)
 ' "$sbom" > "$normalized"
 
 mv "$normalized" "$sbom"
