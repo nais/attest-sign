@@ -62,7 +62,7 @@ if [ "${#dangling[@]}" -gt 0 ]; then
 fi
 
 mapfile -t dupe_purls < <(jq -r '
-  [.components[]? | select(has("purl")) | .purl]
+  [.components[]? | .purl | select(type == "string" and . != "")]
   | group_by(.) | map(select(length > 1) | .[0]) | .[]' "$sbom")
 if [ "${#dupe_purls[@]}" -gt 0 ]; then
   echo "LINT: multiple components share a purl:"

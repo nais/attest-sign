@@ -4,6 +4,8 @@
 #
 #   dangling-ref-sbom.json - dependsOn points at a bom-ref no component declares.
 #   npm-sbom.json          - clean, schema-valid, lint-clean.
+#   null-purl-sbom.json    - several components with an empty/absent purl; must
+#                            not be flagged as sharing a purl.
 
 set -euo pipefail
 
@@ -15,6 +17,9 @@ fail() { echo "FAIL: $1"; exit 1; }
 
 # Clean SBOM passes in every mode.
 bash "$lint" "$here/npm-sbom.json" error >/dev/null || fail "clean SBOM should pass lint in error mode"
+
+# Components with an empty or absent purl are not "sharing a purl".
+bash "$lint" "$here/null-purl-sbom.json" error >/dev/null || fail "empty/absent purls should not be flagged as duplicates"
 
 # Dangling dependency-graph ref: fails in error, reported but not fatal in warn,
 # untouched in off.
