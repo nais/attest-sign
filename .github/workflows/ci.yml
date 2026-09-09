@@ -53,6 +53,7 @@ jobs:
           sbom: auto-generate-for-me-please.json
           additional_sboms: |
             test/npm-sbom.json
+          sbom_lint: error
 
       - name: Verify merged SBOM output
         env:
@@ -82,8 +83,8 @@ jobs:
         run: |
           echo "image_ref=${{ steps.docker_build_push.outputs.image }}" >> "$GITHUB_OUTPUT"
 
-  normalize-regression:
-    name: SBOM normalization regression test
+  sbom-scripts:
+    name: SBOM normalize + lint scripts
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -96,8 +97,11 @@ jobs:
       - name: Install cyclonedx-cli
         run: bash scripts/install-cyclonedx-cli.sh
 
-      - name: Run normalization regression test
+      - name: normalize-sbom.sh
         run: bash test/normalize-sbom-test.sh
+
+      - name: lint-sbom.sh
+        run: bash test/lint-sbom-test.sh
 
   deploy-preview:
     name: Deploy preview job to dev

@@ -18,9 +18,9 @@ inputs:
   sbom_lint:
     description: |
       'how the normalized SBOM is validated before attestation:'
-      '"error" (default) fails the build on any CycloneDX schema or lint problem,'
-      '"warn" reports them without failing, "off" skips validation (normalization still runs).'
-    default: 'error'
+      '"warn" (default) reports CycloneDX schema and lint problems without failing,'
+      '"error" fails the build on them, "off" skips validation (normalization still runs).'
+    default: 'warn'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
     default: "europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1"
@@ -167,14 +167,23 @@ runs:
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
 
-    - name: Normalize and validate final SBOM
+    - name: Normalize final SBOM
+      env:
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+        ACTION_PATH: ${{ github.action_path }}
+      shell: 'bash'
+      run: |
+        bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"
+
+    - name: Validate final SBOM
+      if: inputs.sbom_lint != 'off'
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
         SBOM_LINT: ${{ inputs.sbom_lint }}
         ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM" "$SBOM_LINT"
+        bash "$ACTION_PATH/scripts/lint-sbom.sh" "$FINAL_SBOM" "$SBOM_LINT"
 
     - name: Debug SBOM summary
       env:
