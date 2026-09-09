@@ -19,7 +19,7 @@ This action automates container image supply chain security by:
 | `image_ref` | ✅ Yes | - | Full image reference in the form `<image>@<digest>` (e.g., `europe-north1-docker.pkg.dev/nais-io/nais/images/app@sha256:abc123...`) |
 | `sbom` | ❌ No | `auto-generate-for-me-please.json` | Path to existing SBOM in CycloneDX format. If not provided, SBOM is auto-generated from the image manifest. |
 | `additional_sboms` | ❌ No | `''` | Newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM before attestation. Missing files fail the action. |
-| `sbom_lint` | ❌ No | `warn` | How the normalized SBOM is validated before attestation: `warn` reports CycloneDX schema and lint problems without failing, `error` fails the build on them, `off` skips validation (normalization still runs). |
+| `sbom_lint` | ❌ No | `warn` | How the SBOM is handled before attestation: `warn` normalizes it and reports CycloneDX schema / lint problems without failing, `error` normalizes it and fails the build on any problem, `off` attests Trivy output as-is (no normalization, no validation). |
 | `trivy_java_db_repositories` | ❌ No | `europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1` | Comma-separated list of container registries to use for Trivy Java DB mirror fallback |
 
 ## Outputs
@@ -92,8 +92,8 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 2. **Trivy Java DB Caching**: Fetches and caches the Trivy Java database using multiple repository mirrors to avoid rate limiting
 3. **SBOM Generation**: Uses Trivy (v0.70.0) to scan the image and generate a CycloneDX SBOM unless one is provided
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
-5. **SBOM Normalization**: Collapses duplicate components (same `bom-ref`) and de-duplicates `dependencies` / `dependsOn` entries. Trivy can emit a package as several components sharing one `bom-ref` when it is present in multiple image layers, which makes the BOM invalid and causes downstream consumers such as Dependency-Track to reject the attestation.
-6. **SBOM Validation**: Runs CycloneDX schema validation plus lint checks (dangling dependency-graph refs, components sharing a `purl`) on the normalized SBOM. Controlled by `sbom_lint` (`error` / `warn` / `off`).
+5. **SBOM Normalization**: Unless `sbom_lint: off`, collapses duplicate components (same `bom-ref`) and de-duplicates `dependencies` / `dependsOn` entries. Trivy can emit a package as several components sharing one `bom-ref` when it is present in multiple image layers, which makes the BOM invalid and causes downstream consumers such as Dependency-Track to reject the attestation.
+6. **SBOM Validation**: Unless `sbom_lint: off`, runs CycloneDX schema validation plus lint checks (dangling dependency-graph refs, components sharing a `purl`) on the normalized SBOM. `sbom_lint: error` fails the build on any problem; `warn` reports them.
 7. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
 8. **Output**: Returns the final SBOM path for downstream use
 
