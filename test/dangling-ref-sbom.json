@@ -1,0 +1,32 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "container",
+      "bom-ref": "root",
+      "name": "example",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/requests@2.34.2",
+      "name": "requests",
+      "version": "2.34.2",
+      "purl": "pkg:pypi/requests@2.34.2"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "root",
+      "dependsOn": ["pkg:pypi/requests@2.34.2"]
+    },
+    {
+      "ref": "pkg:pypi/requests@2.34.2",
+      "dependsOn": ["pkg:pypi/urllib3@2.7.0"]
+    }
+  ]
+}
