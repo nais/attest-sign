@@ -82,6 +82,23 @@ jobs:
         run: |
           echo "image_ref=${{ steps.docker_build_push.outputs.image }}" >> "$GITHUB_OUTPUT"
 
+  normalize-regression:
+    name: SBOM normalization regression test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Install cyclonedx-cli
+        run: bash scripts/install-cyclonedx-cli.sh
+
+      - name: Run normalization regression test
+        run: bash test/normalize-sbom-test.sh
+
   deploy-preview:
     name: Deploy preview job to dev
     if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}

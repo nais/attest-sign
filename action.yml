@@ -117,18 +117,11 @@ runs:
         fi
 
     - name: Install cyclonedx-cli
+      env:
+        ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        set -e
-
-        version='v0.32.0'
-        download_url="https://github.com/CycloneDX/cyclonedx-cli/releases/download/${version}/cyclonedx-linux-x64"
-        expected_sha='454879e6a4a405c8a13bff49b8982adcb0596f3019b26b0811c66e4d7f0783e1'
-
-        curl -fsSL "$download_url" -o cyclonedx
-        echo "$expected_sha  cyclonedx" | sha256sum --check --status
-        chmod +x cyclonedx
-        sudo mv cyclonedx /usr/local/bin/cyclonedx
+        bash "$ACTION_PATH/scripts/install-cyclonedx-cli.sh"
 
     - name: Prepare final SBOM
       id: prepare-sbom
