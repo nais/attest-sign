@@ -9,7 +9,7 @@
 # schema-validation error and the affected workload never gets a vulnerability
 # report. See https://github.com/aquasecurity/trivy/discussions/7532
 #
-# What it changes, and nothing else:
+# What it normalizes (note: rewrites JSON formatting and may reorder arrays):
 #   - components: drop entries after the first that share a `bom-ref` (bom-ref
 #     must be unique per spec; components without a bom-ref are left untouched)
 #   - dependencies: merge entries that share a `ref`, unioning their `dependsOn`
