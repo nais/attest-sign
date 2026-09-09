@@ -16,11 +16,13 @@ tmp="$(mktemp)"
 staged="$(sudo mktemp "${dest}.XXXXXX")"
 trap 'rm -f "$tmp"; sudo rm -f "$staged"' EXIT
 
-curl -fsSL "$download_url" -o "$tmp"
+curl -fsSL --retry 3 --retry-connrefused --retry-delay 2 "$download_url" -o "$tmp"
 echo "${expected_sha}  ${tmp}" | sha256sum --check --status
 sudo cp "$tmp" "$staged"
 sudo chmod 0755 "$staged"
 sudo mv "$staged" "$dest"
-trap 'rm -f "$tmp"' EXIT
+
+trap - EXIT
+rm -f "$tmp"
 
 cyclonedx --version

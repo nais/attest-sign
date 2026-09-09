@@ -53,7 +53,7 @@ jobs:
           sbom: auto-generate-for-me-please.json
           additional_sboms: |
             test/npm-sbom.json
-          sbom_lint: error
+          sbom_check: error
 
       - name: Verify merged SBOM output
         env:

@@ -15,12 +15,12 @@ inputs:
   additional_sboms:
     description: 'newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM'
     default: ''
-  sbom_lint:
+  sbom_check:
     description: |
-      how the SBOM is handled before attestation:
-      warn (default) normalizes it and reports CycloneDX schema / lint problems without failing,
-      error normalizes it and fails the build on any problem,
-      off skips normalization and validation (SBOM merge still runs if additional_sboms is set).
+      how the SBOM is normalized and checked before attestation:
+      warn (default) normalizes it and reports CycloneDX schema / lint problems without failing the build,
+      error normalizes it and fails the build on any schema error or lint problem,
+      off skips normalization and checking entirely (SBOM merge still runs if additional_sboms is set).
     default: 'warn'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
@@ -42,6 +42,23 @@ runs:
           exit 1
         fi
       shell: 'bash'
+
+    - name: 'Resolve SBOM check mode'
+      id: sbom-check
+      env:
+        MODE: ${{ inputs.sbom_check }}
+      shell: 'bash'
+      run: |
+        case "$MODE" in
+          warn|error|off) ;;
+          *)
+            echo "::error::sbom_check must be one of: warn, error, off (got '$MODE')"
+            exit 1
+            ;;
+        esac
+        if [ "$MODE" = off ]; then enabled=false; else enabled=true; fi
+        echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+
     - name: 'Install cosign'
       uses: 'sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6' # ratchet:sigstore/cosign-installer@v4.1.2
       with:
@@ -124,7 +141,7 @@ runs:
         fi
 
     - name: Install cyclonedx-cli
-      if: inputs.additional_sboms != '' || inputs.sbom_lint != 'off'
+      if: inputs.additional_sboms != '' || steps.sbom-check.outputs.enabled == 'true'
       env:
         ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
@@ -169,23 +186,31 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Normalize final SBOM
-      if: inputs.sbom_lint != 'off'
+      if: steps.sbom-check.outputs.enabled == 'true'
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+        MODE: ${{ inputs.sbom_check }}
         ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"
+        if bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"; then
+          exit 0
+        fi
+        if [ "$MODE" = error ]; then
+          echo "::error::SBOM normalization failed"
+          exit 1
+        fi
+        echo "::warning::SBOM normalization failed; attesting the SBOM as-is (sbom_check: warn)"
 
     - name: Validate final SBOM
-      if: inputs.sbom_lint != 'off'
+      if: steps.sbom-check.outputs.enabled == 'true'
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
-        SBOM_LINT: ${{ inputs.sbom_lint }}
+        MODE: ${{ inputs.sbom_check }}
         ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "$ACTION_PATH/scripts/lint-sbom.sh" "$FINAL_SBOM" "$SBOM_LINT"
+        bash "$ACTION_PATH/scripts/lint-sbom.sh" "$FINAL_SBOM" "$MODE"
 
     - name: Debug SBOM summary
       env:
