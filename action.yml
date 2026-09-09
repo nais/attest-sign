@@ -17,9 +17,10 @@ inputs:
     default: ''
   sbom_lint:
     description: |
-      'how the normalized SBOM is validated before attestation:'
-      '"warn" (default) reports CycloneDX schema and lint problems without failing,'
-      '"error" fails the build on them, "off" skips validation (normalization still runs).'
+      'how the SBOM is handled before attestation:'
+      '"warn" (default) normalizes it and reports CycloneDX schema / lint problems without failing,'
+      '"error" normalizes it and fails the build on any problem,'
+      '"off" attests Trivy output as-is (no normalization, no validation).'
     default: 'warn'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
@@ -168,6 +169,7 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Normalize final SBOM
+      if: inputs.sbom_lint != 'off'
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
         ACTION_PATH: ${{ github.action_path }}
