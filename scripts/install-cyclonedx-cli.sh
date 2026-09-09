@@ -4,9 +4,9 @@
 
 set -euo pipefail
 
-version='v0.32.0'
+version='v0.33.1'
 download_url="https://github.com/CycloneDX/cyclonedx-cli/releases/download/${version}/cyclonedx-linux-x64"
-expected_sha='454879e6a4a405c8a13bff49b8982adcb0596f3019b26b0811c66e4d7f0783e1'
+expected_sha='bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746'
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
