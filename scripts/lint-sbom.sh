@@ -37,11 +37,46 @@ fi
 
 problems=0
 
-if ! cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors; then
+spec_version=$(jq -r '.specVersion // "unknown"' "$sbom")
+[ -n "$spec_version" ] || spec_version="unknown"
+
+# Validate against the schema the SBOM declares, not cyclonedx-cli's newest
+# default (currently v1.7).
+validate_args=(--input-file "$sbom" --input-format json --fail-on-errors)
+case "$spec_version" in
+  1.*) validate_args+=(--input-version "v${spec_version//./_}") ;;
+esac
+if ! cyclonedx validate "${validate_args[@]}"; then
   problems=1
 fi
 
-spec_version=$(jq -r '.specVersion // "unknown"' "$sbom")
+# check VAR LABEL PROGRAM: run a jq check and store its newline-separated output
+# in VAR (in this shell, so `problems` updates stick - `mapfile < <(jq ...)` is
+# avoided on purpose: it is bash 4+, and a process substitution hides jq's exit
+# status). A failure of jq itself counts as a problem rather than a silent pass.
+check() {
+  local __var=$1 label=$2 program=$3 out
+  if out=$(jq -r "$program" "$sbom" 2>&1); then
+    printf -v "$__var" '%s' "$out"
+  else
+    echo "LINT: $label check could not run: $out" >&2
+    problems=1
+    printf -v "$__var" '%s' ''
+  fi
+}
+
+# report_lines HEADING LINES: if LINES is non-empty, print HEADING then each
+# line bulleted, and count it as a problem.
+report_lines() {
+  local heading=$1 lines=$2 line
+  [ -n "$lines" ] || return 0
+  echo "$heading"
+  while IFS= read -r line; do
+    [ -n "$line" ] && echo "  - $line"
+  done <<< "$lines"
+  problems=1
+}
+
 case " $REVIEWED_SPEC_VERSIONS " in
   *" $spec_version "*) ;;
   *)
@@ -50,25 +85,21 @@ case " $REVIEWED_SPEC_VERSIONS " in
     ;;
 esac
 
-mapfile -t dangling < <(jq -r '
+dangling='' dupe_purls=''
+
+# shellcheck disable=SC2016  # the single-quoted strings are jq programs, not shell
+check dangling "dangling-ref" '
   ([.. | objects | select(has("bom-ref")) | ."bom-ref"] | unique) as $known
   | [ .dependencies[]? | (.ref, (.dependsOn[]?), (.provides[]?)) ]
   | map(select(. != null)) | unique
-  | map(select(. as $r | ($known | index($r)) | not)) | .[]' "$sbom")
-if [ "${#dangling[@]}" -gt 0 ]; then
-  echo "LINT: dependency graph references unknown bom-ref(s):"
-  printf '  - %s\n' "${dangling[@]}"
-  problems=1
-fi
+  | map(select(. as $r | ($known | index($r)) | not)) | .[]'
+report_lines "LINT: dependency graph references unknown bom-ref(s):" "$dangling"
 
-mapfile -t dupe_purls < <(jq -r '
+# shellcheck disable=SC2016
+check dupe_purls "shared-purl" '
   [.components[]? | .purl | select(type == "string" and . != "")]
-  | group_by(.) | map(select(length > 1) | .[0]) | .[]' "$sbom")
-if [ "${#dupe_purls[@]}" -gt 0 ]; then
-  echo "LINT: multiple components share a purl:"
-  printf '  - %s\n' "${dupe_purls[@]}"
-  problems=1
-fi
+  | group_by(.) | map(select(length > 1) | .[0]) | .[]'
+report_lines "LINT: multiple components share a purl:" "$dupe_purls"
 
 if [ "$problems" -eq 0 ]; then
   echo "lint-sbom: valid and lint-clean"
