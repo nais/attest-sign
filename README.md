@@ -19,7 +19,7 @@ This action automates container image supply chain security by:
 | `image_ref` | ✅ Yes | - | Full image reference in the form `<image>@<digest>` (e.g., `europe-north1-docker.pkg.dev/nais-io/nais/images/app@sha256:abc123...`) |
 | `sbom` | ❌ No | `auto-generate-for-me-please.json` | Path to existing SBOM in CycloneDX format. If not provided, SBOM is auto-generated from the image manifest. |
 | `additional_sboms` | ❌ No | `''` | Newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM before attestation. Missing files fail the action. |
-| `sbom_lint` | ❌ No | `warn` | How the SBOM is handled before attestation: `warn` normalizes it and reports CycloneDX schema / lint problems without failing, `error` normalizes it and fails the build on any problem, `off` attests Trivy output as-is (no normalization, no validation). |
+| `sbom_lint` | ❌ No | `warn` | How the SBOM is handled before attestation: `warn` normalizes it and reports CycloneDX schema / lint problems without failing, `error` normalizes it and fails the build on any problem, `off` skips normalization and validation (SBOM merge still runs if `additional_sboms` is set). |
 | `trivy_java_db_repositories` | ❌ No | `europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1` | Comma-separated list of container registries to use for Trivy Java DB mirror fallback |
 
 ## Outputs
