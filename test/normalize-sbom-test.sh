@@ -2,7 +2,8 @@
 #
 # Tests for scripts/normalize-sbom.sh, using test/duplicate-sbom.json: a
 # Trivy-shaped BOM with duplicate components sharing a bom-ref, a duplicated
-# dependency entry, and a repeated dependsOn ref.
+# dependency entry (one copy carrying an extra `provides`), and a repeated
+# dependsOn ref.
 
 set -euo pipefail
 
@@ -35,6 +36,9 @@ assert_eq "dependency refs unique" \
   "$(jq '[.dependencies[].ref] | unique | length' "$sbom")" "3"
 assert_eq "dependsOn entries unique" \
   "$(jq '[.dependencies[] | (.dependsOn | length) - (.dependsOn | unique | length)] | add' "$sbom")" "0"
+assert_eq "provides preserved from a later merged duplicate" \
+  "$(jq -c '.dependencies[] | select(.ref == "pkg:pypi/requests@2.34.2") | .provides' "$sbom")" \
+  '["pkg:pypi/certifi@2026.6.17"]'
 
 cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors >/dev/null \
   || fail "normalized SBOM does not pass schema validation"
