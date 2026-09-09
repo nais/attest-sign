@@ -23,11 +23,13 @@ fi
 
 bash "$repo/scripts/normalize-sbom.sh" "$sbom"
 
-assert_eq "duplicate component collapsed" "$(jq '.components | length' "$sbom")" "2"
+assert_eq "duplicate component collapsed" "$(jq '.components | length' "$sbom")" "3"
 assert_eq "component bom-refs unique" \
-  "$(jq '[.components[]."bom-ref"] | unique | length' "$sbom")" "2"
+  "$(jq '[.components[]."bom-ref" | select(. != null)] | (length) - (unique | length)' "$sbom")" "0"
 assert_eq "single certifi component kept" \
   "$(jq '[.components[] | select(."bom-ref" == "pkg:pypi/certifi@2026.6.17")] | length' "$sbom")" "1"
+assert_eq "component without a bom-ref left untouched" \
+  "$(jq '[.components[] | select(.name == "no-bom-ref-lib")] | length' "$sbom")" "1"
 assert_eq "duplicate dependency entry merged" "$(jq '.dependencies | length' "$sbom")" "3"
 assert_eq "dependency refs unique" \
   "$(jq '[.dependencies[].ref] | unique | length' "$sbom")" "3"
