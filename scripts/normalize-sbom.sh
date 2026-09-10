@@ -1,29 +1,22 @@
 #!/usr/bin/env bash
 #
-# Make Trivy's CycloneDX output ingestible by strict consumers, in place.
+# Make a Trivy CycloneDX SBOM ingestible by strict consumers (Dependency-Track),
+# in place. A Trivy image scan produces output that fails CycloneDX schema
+# validation, after which DT rejects the attestation and the workload never gets
+# a vulnerability report. Two causes:
 #
-# Scanning a multi-layer image, Trivy emits a package that appears in several
-# layers as several components with the same `bom-ref`, one duplicated
-# `dependencies` entry per repeat, and repeated items inside `dependsOn`. All
-# three must be unique per the CycloneDX spec, so the raw BOM fails schema
-# validation and Dependency-Track rejects the attestation - the affected
-# workload then never gets a vulnerability report.
+#   1. a package present in multiple image layers becomes multiple components
+#      sharing one `bom-ref` (must be unique), which in turn repeats
+#      `dependencies` entries and `dependsOn` items (both `uniqueItems`)
+#   2. the spec version is whatever Trivy's newest is - 1.7 since Trivy 0.71,
+#      with no flag to choose it (aquasecurity/trivy#10850); DT <= 4.14 and much
+#      of the ecosystem only ingest <= 1.6
+#
 # See https://github.com/aquasecurity/trivy/discussions/7532
 #
-# What it does (note: rewrites JSON formatting and reorders arrays):
-#   - components: fold entries that share a `bom-ref` into one, unioning their
-#     `properties` so the per-layer metadata Trivy records there (LayerDigest,
-#     ...) is kept; every other field takes the first occurrence's value.
-#     Components with no `bom-ref` are left untouched.
-#   - dependencies: merge entries that share a `ref`, unioning and de-duplicating
-#     their `dependsOn`. Entries with no `ref` pass through.
-#   - specVersion: down-convert anything newer than CycloneDX 1.6 to 1.6 (via
-#     cyclonedx-cli). Trivy always emits its newest supported version - 1.7 as of
-#     Trivy 0.71 - with no flag to choose (aquasecurity/trivy#10850), and
-#     Dependency-Track <= 4.14.x and much of the ecosystem only ingest <= 1.6.
-#
-# The dedup step writes via a temp file, so a jq failure leaves the original
-# SBOM untouched.
+# The work happens in a temp file that is renamed over the SBOM once, at the end,
+# so a failure leaves the original intact. JSON formatting is rewritten and
+# arrays are reordered.
 #
 # Usage: normalize-sbom.sh <sbom.json>
 
@@ -41,19 +34,20 @@ if [ "$(jq -r '.bomFormat // ""' "$sbom")" != "CycloneDX" ]; then
   exit 1
 fi
 
-# Keep the temp file on the same filesystem as the SBOM so the final mv is an
-# atomic rename, not a copy that could partially overwrite the SBOM on failure.
-normalized="$(mktemp "${sbom}.normalized.XXXXXX")"
-trap 'rm -f "$normalized"' EXIT
+# Both rewrites below - the jq dedup and the optional down-convert - land in a
+# temp file beside the SBOM; a single `mv` at the end is the only thing that
+# touches $sbom, so any failure leaves the original intact. mktemp beside it
+# keeps that `mv` a same-filesystem rename rather than a copy.
+work="$(mktemp "${sbom}.normalize.XXXXXX")"
+converted="$(mktemp "${sbom}.normalize.XXXXXX")"
+trap 'rm -f "$work" "$converted"' EXIT
 
 jq '
-  # Fold each group of components that share a bom-ref down to one, unioning
-  # `properties` across the group (that is where Trivy records the per-layer data
-  # - LayerDigest, LayerDiffID, ... - that differs between the copies). Every
-  # other field is taken from the first component in the group. Only `properties`
-  # is merged: it is an unordered name/value bag, so combining and sorting it
-  # stays schema-valid, whereas unioning fields like `licenses` or `hashes` could
-  # produce a combination the CycloneDX schema rejects.
+  # Fold each bom-ref group down to its first component, carrying over only
+  # `properties` from the rest (unioned) - that is where Trivy puts the per-layer
+  # data (LayerDigest, ...). `properties` is an unordered name/value bag so
+  # merging it stays schema-valid; unioning richer fields (licenses, hashes)
+  # might not. Components with no bom-ref are left alone.
   def fold_properties($dup):
     if ($dup.properties | type) == "array"
     then .properties = (((.properties // []) + $dup.properties) | unique)
@@ -64,10 +58,9 @@ jq '
       | map(reduce .[1:][] as $dup (.[0]; fold_properties($dup))) )
     + [ .[] | select(."bom-ref" == null) ];
 
-  # Merge dependency entries that share a ref, unioning and de-duplicating their
-  # dependsOn (Trivy repeats both the entry and items within dependsOn). A
-  # non-array dependsOn is malformed - it contributes nothing rather than
-  # aborting the whole normalization. Entries with no ref pass through untouched.
+  # Merge entries that share a ref and de-duplicate their dependsOn (Trivy
+  # repeats both). A non-array dependsOn is malformed and contributes nothing
+  # rather than aborting the run. Entries with no ref pass through.
   def merge_dependsOn($group):
     if any($group[]; has("dependsOn"))
     then { dependsOn: ( [ $group[] | (.dependsOn | if type == "array" then .[] else empty end) ] | unique ) }
@@ -80,26 +73,20 @@ jq '
 
   (if (.components | type) == "array" then .components |= dedupe_components else . end)
   | (if (.dependencies | type) == "array" then .dependencies |= dedupe_dependencies else . end)
-' "$sbom" > "$normalized"
+' "$sbom" > "$work"
 
-mv "$normalized" "$sbom"
-trap - EXIT
-
-# Leave the BOM alone if it is already at a version strict consumers accept
-# (Trivy has emitted 1.4 through 1.6); convert anything else - a newer Trivy
-# spec, 1.7 and up - down to 1.6. cyclonedx convert writes the whole file, so
-# stage it beside the SBOM and rename over it.
+# Down-convert to 1.6 (see header) unless the BOM is already 1.4-1.6, everything
+# Trivy has historically emitted.
 KEEP_SPEC_VERSIONS="1.4 1.5 1.6"
-spec_version="$(jq -r '.specVersion // ""' "$sbom")"
+spec_version="$(jq -r '.specVersion // ""' "$work")"
 case " $KEEP_SPEC_VERSIONS " in
-  *" $spec_version "*) ;;
+  *" $spec_version "*)
+    mv "$work" "$sbom"
+    ;;
   *)
-    converted="$(mktemp "${sbom}.cdx16.XXXXXX")"
-    trap 'rm -f "$converted"' EXIT
-    cyclonedx convert --input-file "$sbom" --input-format json \
+    cyclonedx convert --input-file "$work" --input-format json \
       --output-file "$converted" --output-format json --output-version v1_6
     mv "$converted" "$sbom"
-    trap - EXIT
     echo "normalize-sbom: down-converted CycloneDX $spec_version -> 1.6"
     ;;
 esac

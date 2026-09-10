@@ -18,8 +18,8 @@ inputs:
   sbom_check:
     description: |
       how the SBOM is normalized and checked before attestation:
-      warn (default) normalizes it and reports CycloneDX schema / lint problems without failing the build,
-      error normalizes it and fails the build on any schema error or lint problem,
+      warn (default) normalizes it and reports schema errors and lint findings without failing the build,
+      error normalizes it and fails the build on a schema error or a lint problem (a broken dependency graph); advisory notes - components sharing a purl, an unreviewed spec version - never fail,
       off skips normalization and checking entirely (SBOM merge still runs if additional_sboms is set).
     default: 'warn'
   trivy_java_db_repositories:

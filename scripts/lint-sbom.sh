@@ -44,7 +44,9 @@ fi
 
 problems=0
 
-spec_version=$(jq -r '.specVersion // "unknown"' "$sbom")
+# Don't let a malformed file exit here under `set -e` - `cyclonedx validate`
+# below records it as a problem, and warn mode must still finish.
+spec_version=$(jq -r '.specVersion // "unknown"' "$sbom" 2>/dev/null) || spec_version="unknown"
 [ -n "$spec_version" ] || spec_version="unknown"
 
 reviewed=no
@@ -52,9 +54,9 @@ case " $REVIEWED_SPEC_VERSIONS " in
   *" $spec_version "*) reviewed=yes ;;
 esac
 
-# Validate against the schema version the SBOM declares. For an unreviewed
-# version, let cyclonedx-cli pick (its default is its newest known schema) and
-# leave a NOTE rather than failing - a newer spec is not itself a defect.
+# Validate against the version the SBOM declares; for an unreviewed one let
+# cyclonedx-cli pick its own default and leave a NOTE - a newer spec is not a
+# defect.
 validate_args=(--input-file "$sbom" --input-format json --fail-on-errors)
 if [ "$reviewed" = yes ]; then
   validate_args+=(--input-version "v${spec_version//./_}")
@@ -66,10 +68,9 @@ if [ "$reviewed" != yes ]; then
   echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it"
 fi
 
-# check VAR LABEL PROGRAM: run a jq check and store its newline-separated output
-# in VAR (in this shell, so `problems` updates stick - `mapfile < <(jq ...)` is
-# avoided on purpose: it is bash 4+, and a process substitution hides jq's exit
-# status). A failure of jq itself counts as a problem rather than a silent pass.
+# check VAR LABEL PROGRAM: run jq and store its newline-separated output in VAR.
+# Not `mapfile < <(jq ...)`: that is bash 4+, and the process substitution would
+# hide a jq failure - which here must count as a problem, not a silent pass.
 check() {
   local __var=$1 label=$2 program=$3 out
   if out=$(jq -r "$program" "$sbom" 2>&1); then
