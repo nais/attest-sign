@@ -15,6 +15,13 @@ inputs:
   additional_sboms:
     description: 'newline-separated list of extra CycloneDX SBOM files to merge with the primary SBOM'
     default: ''
+  sbom_check:
+    description: |
+      how the SBOM is normalized and checked before attestation:
+      warn (default) normalizes it and reports schema errors and lint findings without failing the build,
+      error normalizes it and fails the build on a schema error or a lint problem (a broken dependency graph); advisory notes - components sharing a purl, an unreviewed spec version - never fail,
+      off skips normalization and checking entirely (SBOM merge still runs if additional_sboms is set).
+    default: 'warn'
   trivy_java_db_repositories:
     description: 'specify the --java-db-repository strings for Trivy'
     default: "europe-north1-docker.pkg.dev/nais-io/github-ptc/aquasecurity/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db:1"
@@ -35,6 +42,24 @@ runs:
           exit 1
         fi
       shell: 'bash'
+
+    # Validate the input before any SBOM is generated, merged or rewritten.
+    - name: 'Resolve SBOM check mode'
+      id: sbom-check
+      env:
+        MODE: ${{ inputs.sbom_check }}
+      shell: 'bash'
+      run: |
+        case "$MODE" in
+          warn|error|off) ;;
+          *)
+            echo "::error::sbom_check must be one of: warn, error, off (got '$MODE')"
+            exit 1
+            ;;
+        esac
+        if [ "$MODE" = off ]; then enabled=false; else enabled=true; fi
+        echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+
     - name: 'Install cosign'
       uses: 'sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6' # ratchet:sigstore/cosign-installer@v4.1.2
       with:
@@ -117,19 +142,12 @@ runs:
         fi
 
     - name: Install cyclonedx-cli
-      if: inputs.additional_sboms != ''
+      if: inputs.additional_sboms != '' || steps.sbom-check.outputs.enabled == 'true'
+      env:
+        ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        set -e
-
-        version='v0.32.0'
-        download_url="https://github.com/CycloneDX/cyclonedx-cli/releases/download/${version}/cyclonedx-linux-x64"
-        expected_sha='454879e6a4a405c8a13bff49b8982adcb0596f3019b26b0811c66e4d7f0783e1'
-
-        curl -fsSL "$download_url" -o cyclonedx
-        echo "$expected_sha  cyclonedx" | sha256sum --check --status
-        chmod +x cyclonedx
-        sudo mv cyclonedx /usr/local/bin/cyclonedx
+        bash "$ACTION_PATH/scripts/install-cyclonedx-cli.sh"
 
     - name: Prepare final SBOM
       id: prepare-sbom
@@ -168,24 +186,53 @@ runs:
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
 
+    - name: Normalize final SBOM
+      if: steps.sbom-check.outputs.enabled == 'true'
+      env:
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+        MODE: ${{ inputs.sbom_check }}
+        ACTION_PATH: ${{ github.action_path }}
+      shell: 'bash'
+      run: |
+        if bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"; then
+          exit 0
+        fi
+        if [ "$MODE" = error ]; then
+          echo "::error::SBOM normalization failed"
+          exit 1
+        fi
+        echo "::warning::SBOM normalization failed; attesting the SBOM as-is (sbom_check: warn)"
+
+    - name: Validate final SBOM
+      if: steps.sbom-check.outputs.enabled == 'true'
+      env:
+        FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
+        MODE: ${{ inputs.sbom_check }}
+        ACTION_PATH: ${{ github.action_path }}
+      shell: 'bash'
+      run: |
+        bash "$ACTION_PATH/scripts/lint-sbom.sh" "$FINAL_SBOM" "$MODE"
+
     - name: Debug SBOM summary
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
       shell: bash
       run: |
+        # Best-effort diagnostics: a warn-mode run can reach here with a BOM that
+        # is still invalid, so nothing in this step may fail the action.
         sbom="${FINAL_SBOM}"
 
         echo "=== SBOM file info ==="
-        ls -lh "$sbom"
+        ls -lh "$sbom" || true
 
         echo "=== CycloneDX metadata ==="
-        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' "$sbom"
+        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' "$sbom" || true
 
         echo "=== Component count ==="
-        jq '.components | length' "$sbom"
+        jq '.components | if type == "array" then length else . end' "$sbom" || true
 
         echo "=== First 2 components ==="
-        jq '.components[:2]' "$sbom"
+        jq '.components | if type == "array" then .[:2] else . end' "$sbom" || true
 
     - name: 'Sign and attest image'
       env:
