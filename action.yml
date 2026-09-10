@@ -218,19 +218,21 @@ runs:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
       shell: bash
       run: |
+        # Best-effort diagnostics: a warn-mode run can reach here with a BOM that
+        # is still invalid, so nothing in this step may fail the action.
         sbom="${FINAL_SBOM}"
 
         echo "=== SBOM file info ==="
-        ls -lh "$sbom"
+        ls -lh "$sbom" || true
 
         echo "=== CycloneDX metadata ==="
-        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' "$sbom"
+        jq '{bomFormat, specVersion, metadata: {timestamp, tools}}' "$sbom" || true
 
         echo "=== Component count ==="
-        jq '.components | length' "$sbom"
+        jq '.components | if type == "array" then length else . end' "$sbom" || true
 
         echo "=== First 2 components ==="
-        jq '.components[:2]' "$sbom"
+        jq '.components | if type == "array" then .[:2] else . end' "$sbom" || true
 
     - name: 'Sign and attest image'
       env:
