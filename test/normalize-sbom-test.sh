@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 #
-# Tests for scripts/normalize-sbom.sh, using test/duplicate-sbom.json: a
-# Trivy-shaped BOM with two components sharing a bom-ref (differing only in
-# their per-layer properties), a component with no bom-ref, a dependency entry
-# that appears twice, and a repeated item inside dependsOn.
+# Tests for scripts/normalize-sbom.sh.
+#
+#   duplicate-sbom.json - Trivy-shaped BOM with two components sharing a bom-ref
+#                         (differing only in per-layer properties), a component
+#                         with no bom-ref, a dependency entry that appears twice,
+#                         and a repeated item inside dependsOn.
+#   cdx17-sbom.json     - CycloneDX 1.7 (what Trivy 0.71+ emits); must be
+#                         down-converted to 1.6 and deduplicated.
 
 set -euo pipefail
 
@@ -44,5 +48,14 @@ assert_eq "merged dependency entry keeps its dependsOn" \
 
 cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors >/dev/null \
   || fail "normalized SBOM does not pass schema validation"
+
+# CycloneDX 1.7 input is down-converted to 1.6 and still deduplicated.
+sbom17="$work/cdx17.json"
+cp "$here/cdx17-sbom.json" "$sbom17"
+bash "$repo/scripts/normalize-sbom.sh" "$sbom17"
+assert_eq "1.7 down-converted to 1.6" "$(jq -r '.specVersion' "$sbom17")" "1.6"
+assert_eq "1.7 fixture components deduplicated" "$(jq '.components | length' "$sbom17")" "1"
+cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_6 --fail-on-errors >/dev/null \
+  || fail "down-converted SBOM does not pass 1.6 schema validation"
 
 echo "PASS: normalize-sbom.sh tests"
