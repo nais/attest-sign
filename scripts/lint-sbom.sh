@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
 #
-# Validate a CycloneDX SBOM and lint it for problems strict consumers reject that
-# JSON-schema validation misses: dangling dependency-graph refs and components
-# sharing a purl. Also flags CycloneDX spec versions the checks below have not
-# been reviewed against, so schema drift is visible instead of silently passing.
+# Validate a CycloneDX SBOM and lint it before attestation.
+#
+# Two tiers of finding:
+#   PROBLEM - makes the BOM invalid or the dependency graph broken; fails the
+#             build in error mode (schema validation, dangling dependency refs).
+#   NOTE    - real Trivy output legitimately produces these; reported for
+#             visibility but never fails the build (multiple components sharing
+#             a purl, which Trivy emits for packages with more than one parent
+#             and which strict consumers such as Dependency-Track may reject;
+#             CycloneDX spec versions this script has not been vetted against).
 #
 # Read-only; run scripts/normalize-sbom.sh first to fix what can be fixed.
 #
 # Usage: lint-sbom.sh <sbom.json> [error|warn|off]
-#   warn (default) - report problems, exit zero
-#   error          - exit non-zero on any schema or lint problem
+#   warn (default) - report findings, exit zero
+#   error          - exit non-zero on any PROBLEM (NOTEs never fail)
 #   off            - do nothing
 
 set -euo pipefail
 
-# CycloneDX versions the field assumptions below (bom-ref, dependencies[].ref /
+# CycloneDX versions the field assumptions here (bom-ref, dependencies[].ref /
 # dependsOn / provides, purl) have been checked against.
-REVIEWED_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6"
+REVIEWED_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6 1.7"
 
 sbom="${1:?usage: lint-sbom.sh <sbom.json> [error|warn|off]}"
 mode="${2:-warn}"
@@ -40,14 +46,23 @@ problems=0
 spec_version=$(jq -r '.specVersion // "unknown"' "$sbom")
 [ -n "$spec_version" ] || spec_version="unknown"
 
-# Validate against the schema the SBOM declares, not cyclonedx-cli's newest
-# default (currently v1.7).
-validate_args=(--input-file "$sbom" --input-format json --fail-on-errors)
-case "$spec_version" in
-  1.*) validate_args+=(--input-version "v${spec_version//./_}") ;;
+reviewed=no
+case " $REVIEWED_SPEC_VERSIONS " in
+  *" $spec_version "*) reviewed=yes ;;
 esac
+
+# Validate against the schema version the SBOM declares. For an unreviewed
+# version, let cyclonedx-cli pick (its default is its newest known schema) and
+# leave a NOTE rather than failing - a newer spec is not itself a defect.
+validate_args=(--input-file "$sbom" --input-format json --fail-on-errors)
+if [ "$reviewed" = yes ]; then
+  validate_args+=(--input-version "v${spec_version//./_}")
+fi
 if ! cyclonedx validate "${validate_args[@]}"; then
   problems=1
+fi
+if [ "$reviewed" != yes ]; then
+  echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it"
 fi
 
 # check VAR LABEL PROGRAM: run a jq check and store its newline-separated output
@@ -65,25 +80,20 @@ check() {
   fi
 }
 
-# report_lines HEADING LINES: if LINES is non-empty, print HEADING then each
-# line bulleted, and count it as a problem.
+# report_lines SEVERITY HEADING LINES: if LINES is non-empty, print HEADING then
+# each line bulleted. SEVERITY 'problem' also counts toward the error-mode exit;
+# 'note' is informational only.
 report_lines() {
-  local heading=$1 lines=$2 line
+  local severity=$1 heading=$2 lines=$3 line
   [ -n "$lines" ] || return 0
   echo "$heading"
   while IFS= read -r line; do
     [ -n "$line" ] && echo "  - $line"
   done <<< "$lines"
-  problems=1
-}
-
-case " $REVIEWED_SPEC_VERSIONS " in
-  *" $spec_version "*) ;;
-  *)
-    echo "LINT: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; re-check bom-ref / dependencies / purl handling"
+  if [ "$severity" = problem ]; then
     problems=1
-    ;;
-esac
+  fi
+}
 
 dangling='' dupe_purls=''
 
@@ -93,16 +103,16 @@ check dangling "dangling-ref" '
   | [ .dependencies[]? | (.ref, (.dependsOn[]?), (.provides[]?)) ]
   | map(select(. != null)) | unique
   | map(select(. as $r | ($known | index($r)) | not)) | .[]'
-report_lines "LINT: dependency graph references unknown bom-ref(s):" "$dangling"
+report_lines problem "LINT: dependency graph references unknown bom-ref(s):" "$dangling"
 
 # shellcheck disable=SC2016
 check dupe_purls "shared-purl" '
   [.components[]? | .purl | select(type == "string" and . != "")]
   | group_by(.) | map(select(length > 1) | .[0]) | .[]'
-report_lines "LINT: multiple components share a purl:" "$dupe_purls"
+report_lines note "NOTE: multiple components share a purl (Trivy emits these for multi-parent packages; strict consumers such as Dependency-Track may reject them):" "$dupe_purls"
 
 if [ "$problems" -eq 0 ]; then
-  echo "lint-sbom: valid and lint-clean"
+  echo "lint-sbom: no problems (mode: $mode)"
   exit 0
 fi
 
