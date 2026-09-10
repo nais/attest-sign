@@ -4,8 +4,9 @@
 #
 #   duplicate-sbom.json - Trivy-shaped BOM with two components sharing a bom-ref
 #                         (differing only in per-layer properties), a component
-#                         with no bom-ref, a dependency entry that appears twice,
-#                         and a repeated item inside dependsOn.
+#                         with no bom-ref, a dependency entry that appears twice
+#                         (one copy carrying an extra `provides`), and a repeated
+#                         item inside dependsOn.
 #   cdx17-sbom.json     - CycloneDX 1.7 (what Trivy 0.71+ emits); must be
 #                         down-converted to 1.6 and deduplicated.
 
@@ -44,6 +45,9 @@ assert_eq "dependsOn items de-duplicated" \
   "$(jq '[.dependencies[] | (.dependsOn | length) - (.dependsOn | unique | length)] | add' "$sbom")" "0"
 assert_eq "merged dependency entry keeps its dependsOn" \
   "$(jq -c '.dependencies[] | select(.ref == "pkg:pypi/requests@2.34.2") | .dependsOn' "$sbom")" \
+  '["pkg:pypi/certifi@2026.6.17"]'
+assert_eq "provides from a later merged entry is unioned in" \
+  "$(jq -c '.dependencies[] | select(.ref == "pkg:pypi/requests@2.34.2") | .provides' "$sbom")" \
   '["pkg:pypi/certifi@2026.6.17"]'
 
 cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors >/dev/null \
