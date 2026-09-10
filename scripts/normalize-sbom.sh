@@ -84,12 +84,13 @@ jq '
 mv "$normalized" "$sbom"
 trap - EXIT
 
-# Down-convert to CycloneDX 1.6 unless the BOM is already at a version strict
-# consumers accept. cyclonedx convert writes the whole file, so stage it beside
-# the SBOM and rename over it.
-INGESTIBLE_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6"
+# Leave the BOM alone if it is already at a version strict consumers accept
+# (Trivy has emitted 1.4 through 1.6); convert anything else - a newer Trivy
+# spec, 1.7 and up - down to 1.6. cyclonedx convert writes the whole file, so
+# stage it beside the SBOM and rename over it.
+KEEP_SPEC_VERSIONS="1.4 1.5 1.6"
 spec_version="$(jq -r '.specVersion // ""' "$sbom")"
-case " $INGESTIBLE_SPEC_VERSIONS " in
+case " $KEEP_SPEC_VERSIONS " in
   *" $spec_version "*) ;;
   *)
     converted="$(mktemp "${sbom}.cdx16.XXXXXX")"
