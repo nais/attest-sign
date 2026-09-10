@@ -99,7 +99,8 @@ report_lines() {
 
 dangling='' dupe_purls=''
 
-# shellcheck disable=SC2016  # the single-quoted strings are jq programs, not shell
+# graph refs (ref / dependsOn / provides) that no object declares as a bom-ref
+# shellcheck disable=SC2016  # single-quoted strings are jq programs, not shell
 check dangling "dangling-ref" '
   ([.. | objects | select(has("bom-ref")) | ."bom-ref"] | unique) as $known
   | [ .dependencies[]? | (.ref, (.dependsOn[]?), (.provides[]?)) ]
