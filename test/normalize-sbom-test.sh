@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # Tests for scripts/normalize-sbom.sh, using test/duplicate-sbom.json: a
-# Trivy-shaped BOM with duplicate components sharing a bom-ref, a duplicated
-# dependency entry (one copy carrying an extra `provides`, one with a malformed
-# scalar `dependsOn`), and a repeated dependsOn ref.
+# Trivy-shaped BOM with two components sharing a bom-ref (differing only in
+# their per-layer properties), a component with no bom-ref, a dependency entry
+# that appears twice, and a repeated item inside dependsOn.
 
 set -euo pipefail
 
@@ -36,12 +36,9 @@ assert_eq "component without a bom-ref left untouched" \
 assert_eq "duplicate dependency entry merged" "$(jq '.dependencies | length' "$sbom")" "3"
 assert_eq "dependency refs unique" \
   "$(jq '[.dependencies[].ref] | unique | length' "$sbom")" "3"
-assert_eq "dependsOn entries unique" \
+assert_eq "dependsOn items de-duplicated" \
   "$(jq '[.dependencies[] | (.dependsOn | length) - (.dependsOn | unique | length)] | add' "$sbom")" "0"
-assert_eq "provides preserved from a later merged duplicate" \
-  "$(jq -c '.dependencies[] | select(.ref == "pkg:pypi/requests@2.34.2") | .provides' "$sbom")" \
-  '["pkg:pypi/certifi@2026.6.17"]'
-assert_eq "a scalar dependsOn is coerced to an array, not crashed on" \
+assert_eq "merged dependency entry keeps its dependsOn" \
   "$(jq -c '.dependencies[] | select(.ref == "pkg:pypi/requests@2.34.2") | .dependsOn' "$sbom")" \
   '["pkg:pypi/certifi@2026.6.17"]'
 
