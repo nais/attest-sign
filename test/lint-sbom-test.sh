@@ -6,6 +6,9 @@
 #   npm-sbom.json          - clean, schema-valid, lint-clean.
 #   null-purl-sbom.json    - several components with an empty/absent purl; must
 #                            not be flagged as sharing a purl.
+#   shared-purl-sbom.json  - two schema-valid components with the same purl and
+#                            different bom-refs (real Trivy output); a NOTE, not
+#                            a build failure.
 
 set -euo pipefail
 
@@ -35,6 +38,15 @@ if bash "$lint" "$here/duplicate-sbom.json" error >/dev/null 2>&1; then
   fail "schema-invalid SBOM should fail lint in error mode"
 fi
 bash "$lint" "$here/duplicate-sbom.json" warn >/dev/null || fail "warn mode should not fail on a schema-invalid SBOM"
+
+# Components sharing a purl (different bom-refs) are a NOTE, not a PROBLEM:
+# valid Trivy output must pass error mode, but the note must still be printed.
+purl_out=$(bash "$lint" "$here/shared-purl-sbom.json" error 2>&1) \
+  || fail "shared-purl SBOM should pass error mode (purl sharing is a NOTE)"
+case "$purl_out" in
+  *"NOTE: multiple components share a purl"*) ;;
+  *) fail "shared-purl SBOM should still emit the purl NOTE" ;;
+esac
 
 # Invalid mode is rejected.
 if bash "$lint" "$here/npm-sbom.json" bogus >/dev/null 2>&1; then
