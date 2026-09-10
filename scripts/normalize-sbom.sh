@@ -43,33 +43,34 @@ converted="$(mktemp "${sbom}.normalize.XXXXXX")"
 trap 'rm -f "$work" "$converted"' EXIT
 
 jq '
-  # Fold each bom-ref group down to its first component, carrying over only
-  # `properties` from the rest (unioned) - that is where Trivy puts the per-layer
-  # data (LayerDigest, ...). `properties` is an unordered name/value bag so
-  # merging it stays schema-valid; unioning richer fields (licenses, hashes)
-  # might not. Components with no bom-ref are left alone.
+  # One component per bom-ref, kept in first-seen order (a plain object
+  # accumulator preserves insertion order; group_by would sort). The first
+  # occurrence wins every field except `properties`, which is unioned across the
+  # duplicates - that is where Trivy records the per-layer data (LayerDigest,
+  # ...). `properties` is an unordered name/value bag, safe to merge; richer
+  # fields (licenses, hashes) might not be. Components with no bom-ref are kept.
   def fold_properties($dup):
     if ($dup.properties | type) == "array"
     then .properties = (((.properties // []) + $dup.properties) | unique)
     else . end;
   def dedupe_components:
-    ( [ .[] | select(."bom-ref" != null) ]
-      | group_by(."bom-ref")
-      | map(reduce .[1:][] as $dup (.[0]; fold_properties($dup))) )
+    ( reduce (.[] | select(."bom-ref" != null)) as $c ({};
+        ($c["bom-ref"]) as $ref
+        | if has($ref) then .[$ref] |= fold_properties($c) else .[$ref] = $c end)
+      | [ .[] ] )
     + [ .[] | select(."bom-ref" == null) ];
 
-  # Merge entries that share a ref, unioning each edge array (dependsOn, and
-  # provides when present) - Trivy repeats both the entry and items within them.
-  # A non-array edge is malformed and contributes nothing rather than aborting
-  # the run. Entries with no ref pass through.
+  # One dependency node per ref, first-seen order, unioning each edge array
+  # (dependsOn, and provides when present) across the duplicates - Trivy repeats
+  # the node and the items within it. A non-array edge is malformed and adds
+  # nothing rather than aborting the run. Nodes with no ref pass through.
   def merge_edge($group; $field):
     if any($group[]; has($field))
     then { ($field): ( [ $group[] | (.[$field] | if type == "array" then .[] else empty end) ] | unique ) }
     else {} end;
   def dedupe_dependencies:
-    ( [ .[] | select(.ref != null) ]
-      | group_by(.ref)
-      | map(.[0] + merge_edge(.; "dependsOn") + merge_edge(.; "provides")) )
+    ( reduce (.[] | select(.ref != null)) as $d ({}; .[$d.ref] += [$d])
+      | [ .[] | .[0] + merge_edge(.; "dependsOn") + merge_edge(.; "provides") ] )
     + [ .[] | select(.ref == null) ];
 
   (if (.components | type) == "array" then .components |= dedupe_components else . end)
