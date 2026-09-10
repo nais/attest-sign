@@ -4,8 +4,11 @@
 #
 #   dangling-ref-sbom.json - dependsOn points at a bom-ref no component declares.
 #   npm-sbom.json          - clean, schema-valid, lint-clean.
-#   null-purl-sbom.json    - several components with an empty/absent purl; must
-#                            not be flagged as sharing a purl.
+#   null-purl-sbom.json    - two components with purl "" plus two with no purl
+#                            key. Empty-string purl is schema-valid (CycloneDX
+#                            purl has no minLength) and is the case that a naive
+#                            `has("purl")` grouping wrongly flags as a duplicate;
+#                            the no-purl pair is the never-broken control.
 #   shared-purl-sbom.json  - two schema-valid components with the same purl and
 #                            different bom-refs (real Trivy output); a NOTE, not
 #                            a build failure.
@@ -19,7 +22,10 @@ lint="$repo/scripts/lint-sbom.sh"
 # Clean SBOM passes in every mode.
 bash "$lint" "$here/npm-sbom.json" error >/dev/null || fail "clean SBOM should pass lint in error mode"
 
-# Components with an empty or absent purl are not "sharing a purl".
+# The empty/absent-purl fixture is itself schema-valid ...
+cyclonedx validate --input-file "$here/null-purl-sbom.json" --input-format json --fail-on-errors >/dev/null 2>&1 \
+  || fail "null-purl-sbom.json is not schema-valid (empty-string purl rejected?)"
+# ... and empty or absent purls are not flagged as a shared purl, in any mode.
 bash "$lint" "$here/null-purl-sbom.json" error >/dev/null || fail "empty/absent purls should not be flagged as duplicates"
 
 # Dangling dependency-graph ref: fails in error, reported but not fatal in warn,

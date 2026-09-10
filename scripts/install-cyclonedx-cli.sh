@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 #
-# Install a pinned cyclonedx-cli (linux/amd64) to /usr/local/bin/cyclonedx.
+# Install a pinned cyclonedx-cli to /usr/local/bin/cyclonedx (Linux x64 / arm64).
 
 set -euo pipefail
 
 version='v0.33.1'
-download_url="https://github.com/CycloneDX/cyclonedx-cli/releases/download/${version}/cyclonedx-linux-x64"
-expected_sha='bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746'
+
+case "$(uname -s)/$(uname -m)" in
+  Linux/x86_64)          asset='cyclonedx-linux-x64'   expected_sha='bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746' ;;
+  Linux/aarch64 | Linux/arm64) asset='cyclonedx-linux-arm64' expected_sha='b2e9fdf9665ef49868a2ec012171c6e785dcd69745bc5869e53e4f4bfb096a5f' ;;
+  *)
+    echo "install-cyclonedx-cli: unsupported platform $(uname -s)/$(uname -m); need Linux x86_64 or arm64" >&2
+    exit 1
+    ;;
+esac
+download_url="https://github.com/CycloneDX/cyclonedx-cli/releases/download/${version}/${asset}"
 
 dest='/usr/local/bin/cyclonedx'
 
