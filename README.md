@@ -10,7 +10,9 @@ This action automates container image supply chain security by:
 - Creating attestations for vulnerability scanning results
 - Caching database artifacts for performance optimization
 
-**Prerequisites:** You must be authenticated to the registry where attestations and signatures are uploaded.
+**Prerequisites:**
+- A **Linux runner** (x86_64 or arm64). The action installs Trivy, cosign and cyclonedx-cli as Linux binaries and uses `sudo`; it does not run on macOS or Windows runners.
+- Authentication to the registry where attestations and signatures are uploaded.
 
 ## Inputs
 

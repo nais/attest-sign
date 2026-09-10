@@ -58,37 +58,45 @@ jq '
       | map(reduce .[1:][] as $dup (.[0]; fold_properties($dup))) )
     + [ .[] | select(."bom-ref" == null) ];
 
-  # Merge entries that share a ref and de-duplicate their dependsOn (Trivy
-  # repeats both). A non-array dependsOn is malformed and contributes nothing
-  # rather than aborting the run. Entries with no ref pass through.
-  def merge_dependsOn($group):
-    if any($group[]; has("dependsOn"))
-    then { dependsOn: ( [ $group[] | (.dependsOn | if type == "array" then .[] else empty end) ] | unique ) }
+  # Merge entries that share a ref, unioning each edge array (dependsOn, and
+  # provides when present) - Trivy repeats both the entry and items within them.
+  # A non-array edge is malformed and contributes nothing rather than aborting
+  # the run. Entries with no ref pass through.
+  def merge_edge($group; $field):
+    if any($group[]; has($field))
+    then { ($field): ( [ $group[] | (.[$field] | if type == "array" then .[] else empty end) ] | unique ) }
     else {} end;
   def dedupe_dependencies:
     ( [ .[] | select(.ref != null) ]
       | group_by(.ref)
-      | map(.[0] + merge_dependsOn(.)) )
+      | map(.[0] + merge_edge(.; "dependsOn") + merge_edge(.; "provides")) )
     + [ .[] | select(.ref == null) ];
 
   (if (.components | type) == "array" then .components |= dedupe_components else . end)
   | (if (.dependencies | type) == "array" then .dependencies |= dedupe_dependencies else . end)
 ' "$sbom" > "$work"
 
-# Down-convert to 1.6 (see header) unless the BOM is already 1.4-1.6, everything
-# Trivy has historically emitted.
-KEEP_SPEC_VERSIONS="1.4 1.5 1.6"
+# Down-convert only 1.7 and newer (see header). 1.6 and older pass through - an
+# older BOM is left for lint-sbom.sh to flag, not silently rewritten. Only a
+# "1.<minor>" version triggers conversion; a missing or odd version is left as is.
 spec_version="$(jq -r '.specVersion // ""' "$work")"
-case " $KEEP_SPEC_VERSIONS " in
-  *" $spec_version "*)
-    mv "$work" "$sbom"
-    ;;
-  *)
-    cyclonedx convert --input-file "$work" --input-format json \
-      --output-file "$converted" --output-format json --output-version v1_6
-    mv "$converted" "$sbom"
-    echo "normalize-sbom: down-converted CycloneDX $spec_version -> 1.6"
-    ;;
+case "$spec_version" in
+  1.[0-9] | 1.[0-9][0-9]) minor="${spec_version#1.}" ;;
+  *)                      minor=0 ;;
 esac
+if [ "$minor" -ge 7 ]; then
+  cyclonedx convert --input-file "$work" --input-format json \
+    --output-file "$converted" --output-format json --output-version v1_6
+  mv "$converted" "$sbom"
+  echo "normalize-sbom: down-converted CycloneDX $spec_version -> 1.6"
+else
+  mv "$work" "$sbom"
+fi
 
-echo "normalize-sbom: CycloneDX $(jq -r '.specVersion // "?"' "$sbom"), $(jq '(.components // []) | length' "$sbom") components, $(jq '(.dependencies // []) | length' "$sbom") dependency nodes"
+# Summary line, read back from the written file. Counts are type-safe:
+# `"components": true` in a malformed BOM must not fail the script here, after
+# the SBOM has already been replaced.
+final_version="$(jq -r '.specVersion // "?"' "$sbom")"
+components="$(jq '.components | if type == "array" then length else 0 end' "$sbom")"
+dependencies="$(jq '.dependencies | if type == "array" then length else 0 end' "$sbom")"
+echo "normalize-sbom: CycloneDX $final_version, $components components, $dependencies dependency nodes"
