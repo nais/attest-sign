@@ -55,14 +55,13 @@
     },
     {
       "ref": "pkg:pypi/requests@2.34.2",
-      "dependsOn": "pkg:pypi/certifi@2026.6.17"
+      "dependsOn": [
+        "pkg:pypi/certifi@2026.6.17"
+      ]
     },
     {
       "ref": "pkg:pypi/requests@2.34.2",
       "dependsOn": [
-        "pkg:pypi/certifi@2026.6.17"
-      ],
-      "provides": [
         "pkg:pypi/certifi@2026.6.17"
       ]
     },
