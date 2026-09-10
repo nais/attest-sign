@@ -65,11 +65,12 @@ jq '
     + [ .[] | select(."bom-ref" == null) ];
 
   # Merge dependency entries that share a ref, unioning and de-duplicating their
-  # dependsOn (Trivy repeats both the entry and items within dependsOn). Entries
-  # with no ref are malformed but passed through rather than dropped.
+  # dependsOn (Trivy repeats both the entry and items within dependsOn). A
+  # non-array dependsOn is malformed - it contributes nothing rather than
+  # aborting the whole normalization. Entries with no ref pass through untouched.
   def merge_dependsOn($group):
     if any($group[]; has("dependsOn"))
-    then { dependsOn: ( [ $group[] | .dependsOn // empty | .[] ] | unique ) }
+    then { dependsOn: ( [ $group[] | (.dependsOn | if type == "array" then .[] else empty end) ] | unique ) }
     else {} end;
   def dedupe_dependencies:
     ( [ .[] | select(.ref != null) ]

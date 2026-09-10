@@ -58,4 +58,18 @@ assert_eq "1.7 fixture components deduplicated" "$(jq '.components | length' "$s
 cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_6 --fail-on-errors >/dev/null \
   || fail "down-converted SBOM does not pass 1.6 schema validation"
 
+# A malformed (non-array) dependsOn on a duplicated ref must not abort the run.
+malformed="$work/malformed.json"
+jq '.dependencies = [
+      {"ref": "r", "dependsOn": "oops-a-string"},
+      {"ref": "r", "dependsOn": ["pkg:pypi/requests@2.34.2"]}
+    ]' "$here/duplicate-sbom.json" > "$malformed"
+bash "$repo/scripts/normalize-sbom.sh" "$malformed" >/dev/null \
+  || fail "a non-array dependsOn should not abort normalization"
+assert_eq "the two 'r' entries merged into one" \
+  "$(jq '[.dependencies[] | select(.ref == "r")] | length' "$malformed")" "1"
+assert_eq "malformed dependsOn contributes nothing, valid item kept" \
+  "$(jq -c '.dependencies[] | select(.ref == "r") | .dependsOn' "$malformed")" \
+  '["pkg:pypi/requests@2.34.2"]'
+
 echo "PASS: normalize-sbom.sh tests"
