@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Collapse Trivy's duplicate CycloneDX output in place.
+# Make Trivy's CycloneDX output ingestible by strict consumers, in place.
 #
 # Scanning a multi-layer image, Trivy emits a package that appears in several
 # layers as several components with the same `bom-ref`, one duplicated
@@ -10,15 +10,20 @@
 # workload then never gets a vulnerability report.
 # See https://github.com/aquasecurity/trivy/discussions/7532
 #
-# What it normalizes (note: rewrites JSON formatting and reorders arrays):
+# What it does (note: rewrites JSON formatting and reorders arrays):
 #   - components: fold entries that share a `bom-ref` into one, unioning their
 #     `properties` so the per-layer metadata Trivy records there (LayerDigest,
 #     ...) is kept; every other field takes the first occurrence's value.
 #     Components with no `bom-ref` are left untouched.
 #   - dependencies: merge entries that share a `ref`, unioning and de-duplicating
 #     their `dependsOn`. Entries with no `ref` pass through.
+#   - specVersion: down-convert anything newer than CycloneDX 1.6 to 1.6 (via
+#     cyclonedx-cli). Trivy always emits its newest supported version - 1.7 as of
+#     Trivy 0.71 - with no flag to choose (aquasecurity/trivy#10850), and
+#     Dependency-Track <= 4.14.x and much of the ecosystem only ingest <= 1.6.
 #
-# Writes via a temp file, so a jq failure leaves the original SBOM untouched.
+# The dedup step writes via a temp file, so a jq failure leaves the original
+# SBOM untouched.
 #
 # Usage: normalize-sbom.sh <sbom.json>
 
@@ -78,5 +83,23 @@ jq '
 
 mv "$normalized" "$sbom"
 trap - EXIT
+
+# Down-convert to CycloneDX 1.6 unless the BOM is already at a version strict
+# consumers accept. cyclonedx convert writes the whole file, so stage it beside
+# the SBOM and rename over it.
+INGESTIBLE_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6"
+spec_version="$(jq -r '.specVersion // ""' "$sbom")"
+case " $INGESTIBLE_SPEC_VERSIONS " in
+  *" $spec_version "*) ;;
+  *)
+    converted="$(mktemp "${sbom}.cdx16.XXXXXX")"
+    trap 'rm -f "$converted"' EXIT
+    cyclonedx convert --input-file "$sbom" --input-format json \
+      --output-file "$converted" --output-format json --output-version v1_6
+    mv "$converted" "$sbom"
+    trap - EXIT
+    echo "normalize-sbom: down-converted CycloneDX $spec_version -> 1.6"
+    ;;
+esac
 
 echo "normalize-sbom: CycloneDX $(jq -r '.specVersion // "?"' "$sbom"), $(jq '(.components // []) | length' "$sbom") components, $(jq '(.dependencies // []) | length' "$sbom") dependency nodes"

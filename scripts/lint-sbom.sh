@@ -22,7 +22,7 @@ set -euo pipefail
 
 # CycloneDX versions the field assumptions here (bom-ref, dependencies[].ref /
 # dependsOn / provides, purl) have been checked against.
-REVIEWED_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6 1.7"
+REVIEWED_SPEC_VERSIONS="1.2 1.3 1.4 1.5 1.6"
 
 sbom="${1:?usage: lint-sbom.sh <sbom.json> [error|warn|off]}"
 mode="${2:-warn}"
