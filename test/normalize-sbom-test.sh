@@ -62,6 +62,20 @@ assert_eq "1.7 fixture components deduplicated" "$(jq '.components | length' "$s
 cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_6 --fail-on-errors >/dev/null \
   || fail "down-converted SBOM does not pass 1.6 schema validation"
 
+# bom-ref groups keep first-seen order, and the first occurrence wins every
+# non-properties field.
+order="$work/order.json"
+jq '.components = [
+      {"type": "library", "bom-ref": "dup", "name": "first",  "version": "1.0.0"},
+      {"type": "library", "bom-ref": "solo", "name": "solo",   "version": "1"},
+      {"type": "library", "bom-ref": "dup", "name": "second", "version": "2.0.0"}
+    ] | .dependencies = [{"ref": "dup", "dependsOn": []}]' "$here/duplicate-sbom.json" > "$order"
+bash "$repo/scripts/normalize-sbom.sh" "$order" >/dev/null
+assert_eq "duplicate folded, order preserved" \
+  "$(jq -c '[.components[]."bom-ref"]' "$order")" '["dup","solo"]'
+assert_eq "first occurrence wins non-properties fields" \
+  "$(jq -r '.components[] | select(."bom-ref" == "dup") | .version' "$order")" "1.0.0"
+
 # A malformed (non-array) dependsOn on a duplicated ref must not abort the run.
 malformed="$work/malformed.json"
 jq '.dependencies = [
