@@ -8,9 +8,9 @@
 #   1. a package present in multiple image layers becomes multiple components
 #      sharing one `bom-ref` (must be unique), which in turn repeats
 #      `dependencies` entries and `dependsOn` items (both `uniqueItems`)
-#   2. the spec version is whatever Trivy's newest is - 1.7 since Trivy 0.71,
-#      with no flag to choose it (aquasecurity/trivy#10850); DT <= 4.14 and much
-#      of the ecosystem only ingest <= 1.6
+#   2. Trivy's newest spec version can change independently of this action.
+#      Dependency-Track 4.14.4 supports CycloneDX 1.7, so the action keeps the
+#      declared version instead of down-converting it.
 #
 # See https://github.com/aquasecurity/trivy/discussions/7532
 #
@@ -34,13 +34,12 @@ if [ "$(jq -r '.bomFormat // ""' "$sbom")" != "CycloneDX" ]; then
   exit 1
 fi
 
-# Both rewrites below - the jq dedup and the optional down-convert - land in a
-# temp file beside the SBOM; a single `mv` at the end is the only thing that
-# touches $sbom, so any failure leaves the original intact. mktemp beside it
-# keeps that `mv` a same-filesystem rename rather than a copy.
+# The jq rewrite lands in a temp file beside the SBOM; a single `mv` at the end
+# is the only thing that touches $sbom, so any failure leaves the original
+# intact. mktemp beside it keeps that `mv` a same-filesystem rename rather than
+# a copy.
 work="$(mktemp "${sbom}.normalize.XXXXXX")"
-converted="$(mktemp "${sbom}.normalize.XXXXXX")"
-trap 'rm -f "$work" "$converted"' EXIT
+trap 'rm -f "$work"' EXIT
 
 jq '
   # One component per bom-ref, kept in first-seen order (a plain object
@@ -77,22 +76,7 @@ jq '
   | (if (.dependencies | type) == "array" then .dependencies |= dedupe_dependencies else . end)
 ' "$sbom" > "$work"
 
-# Down-convert only 1.7 and newer (see header). 1.6 and older pass through - an
-# older BOM is left for lint-sbom.sh to flag, not silently rewritten. Only a
-# "1.<minor>" version triggers conversion; a missing or odd version is left as is.
-spec_version="$(jq -r '.specVersion // ""' "$work")"
-case "$spec_version" in
-  1.[0-9] | 1.[0-9][0-9]) minor="${spec_version#1.}" ;;
-  *)                      minor=0 ;;
-esac
-if [ "$minor" -ge 7 ]; then
-  cyclonedx convert --input-file "$work" --input-format json \
-    --output-file "$converted" --output-format json --output-version v1_6
-  mv "$converted" "$sbom"
-  echo "normalize-sbom: down-converted CycloneDX $spec_version -> 1.6"
-else
-  mv "$work" "$sbom"
-fi
+mv "$work" "$sbom"
 
 # Summary line, read back from the written file. Counts are type-safe:
 # `"components": true` in a malformed BOM must not fail the script here, after
