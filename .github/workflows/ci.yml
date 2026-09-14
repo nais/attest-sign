@@ -64,6 +64,7 @@ jobs:
           sbom="$FINAL_SBOM"
           test -f "$sbom"
 
+          test "$(jq -r '.specVersion' "$sbom")" = "1.7"
           jq -e '.components[] | select(.name == "npm-lib" and .version == "1.2.3")' "$sbom" >/dev/null
 
           component_count=$(jq '.components | length' "$sbom")
