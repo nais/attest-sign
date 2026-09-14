@@ -176,7 +176,7 @@ runs:
 
         if [ "${#sboms[@]}" -gt 1 ]; then
           merged_sbom="$(mktemp "${RUNNER_TEMP}/merged-sbom.XXXXXX.json")"
-          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json --output-version v1_6
+          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json
           final_sbom="$merged_sbom"
         fi
 

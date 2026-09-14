@@ -96,10 +96,10 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
 5. **SBOM Normalization**: Unless `sbom_check: off`:
    - folds duplicate components (exact same `bom-ref`) into one, unioning their `properties`, and de-duplicates / merges `dependencies` and `dependsOn` entries. Trivy emits a package as several components sharing one `bom-ref` when it is present in multiple image layers, which makes the BOM invalid and causes downstream consumers such as Dependency-Track to reject the attestation.
-   - down-converts anything newer than CycloneDX 1.6 to 1.6. Trivy emits its newest supported spec version (1.7 as of Trivy 0.71) with no flag to choose, and Dependency-Track (≤ 4.14.x) and much of the ecosystem only ingest ≤ 1.6.
+   - preserves the declared CycloneDX version. Trivy emits CycloneDX 1.7 from v0.71, which is supported by Dependency-Track 4.14.4.
 
    In `warn` mode a normalization failure is logged and the SBOM is attested as-is; in `error` mode it fails the build.
-6. **SBOM Validation**: Unless `sbom_check: off`, runs CycloneDX schema validation and lint checks on the normalized SBOM. Findings come in two tiers: **problems** (schema-invalid BOM, or a dependency graph that references an unknown `bom-ref`) fail the build under `sbom_check: error`; **notes** (multiple components sharing a `purl` — which Trivy emits for multi-parent packages and which strict consumers such as Dependency-Track may reject — and CycloneDX spec versions outside the reviewed range 1.4–1.6) are reported for visibility but never fail the build. `warn` reports both tiers without failing.
+6. **SBOM Validation**: Unless `sbom_check: off`, runs CycloneDX schema validation and lint checks on the normalized SBOM. Findings come in two tiers: **problems** (schema-invalid BOM, or a dependency graph that references an unknown `bom-ref`) fail the build under `sbom_check: error`; **notes** (multiple components sharing a `purl` — which Trivy emits for multi-parent packages and which strict consumers such as Dependency-Track may reject — and CycloneDX spec versions outside the reviewed range 1.4–1.7) are reported for visibility but never fail the build. `warn` reports both tiers without failing.
 7. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
 8. **Output**: Returns the final SBOM path for downstream use
 
