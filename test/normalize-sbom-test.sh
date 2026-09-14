@@ -7,8 +7,8 @@
 #                         with no bom-ref, a dependency entry that appears twice
 #                         (one copy carrying an extra `provides`), and a repeated
 #                         item inside dependsOn.
-#   cdx17-sbom.json     - CycloneDX 1.7 (what Trivy 0.71+ emits); must be
-#                         down-converted to 1.6 and deduplicated.
+#   cdx17-sbom.json     - CycloneDX 1.7 (what Trivy 0.71+ emits); must remain
+#                         1.7 and be deduplicated.
 
 set -euo pipefail
 
@@ -53,14 +53,14 @@ assert_eq "provides from a later merged entry is unioned in" \
 cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors >/dev/null \
   || fail "normalized SBOM does not pass schema validation"
 
-# CycloneDX 1.7 input is down-converted to 1.6 and still deduplicated.
+# CycloneDX 1.7 input remains 1.7 and is still deduplicated.
 sbom17="$work/cdx17.json"
 cp "$here/cdx17-sbom.json" "$sbom17"
 bash "$repo/scripts/normalize-sbom.sh" "$sbom17"
-assert_eq "1.7 down-converted to 1.6" "$(jq -r '.specVersion' "$sbom17")" "1.6"
+assert_eq "1.7 remains 1.7" "$(jq -r '.specVersion' "$sbom17")" "1.7"
 assert_eq "1.7 fixture components deduplicated" "$(jq '.components | length' "$sbom17")" "1"
-cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_6 --fail-on-errors >/dev/null \
-  || fail "down-converted SBOM does not pass 1.6 schema validation"
+cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_7 --fail-on-errors >/dev/null \
+  || fail "normalized SBOM does not pass 1.7 schema validation"
 
 # bom-ref groups keep first-seen order, and the first occurrence wins every
 # non-properties field.
