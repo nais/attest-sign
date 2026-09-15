@@ -54,18 +54,17 @@ case " $REVIEWED_SPEC_VERSIONS " in
   *" $spec_version "*) reviewed=yes ;;
 esac
 
-# Validate against the version the SBOM declares; for an unreviewed one let
-# cyclonedx-cli pick its own default and leave a NOTE - a newer spec is not a
-# defect.
-validate_args=(--input-file "$sbom" --input-format json --fail-on-errors)
+# Only schema-validate versions this script's field assumptions have been
+# checked against. A pinned cyclonedx-cli may not know how to validate a
+# newer spec at all - that must stay a NOTE, not a PROBLEM that fails
+# `error` mode on a BOM that is not actually defective.
 if [ "$reviewed" = yes ]; then
-  validate_args+=(--input-version "v${spec_version//./_}")
-fi
-if ! cyclonedx validate "${validate_args[@]}"; then
-  problems=1
-fi
-if [ "$reviewed" != yes ]; then
-  echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it"
+  if ! cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors \
+    --input-version "v${spec_version//./_}"; then
+    problems=1
+  fi
+else
+  echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it, schema validation skipped"
 fi
 
 # check VAR LABEL PROGRAM: run jq and store its newline-separated output in VAR.
