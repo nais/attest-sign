@@ -12,6 +12,10 @@
 #   shared-purl-sbom.json  - two schema-valid components with the same purl and
 #                            different bom-refs (real Trivy output); a NOTE, not
 #                            a build failure.
+#   future-spec-sbom.json  - specVersion outside REVIEWED_SPEC_VERSIONS, so
+#                            schema validation is skipped rather than run
+#                            against the wrong version; a NOTE, not a build
+#                            failure even in error mode.
 
 set -euo pipefail
 
@@ -52,6 +56,16 @@ purl_out=$(bash "$lint" "$here/shared-purl-sbom.json" error 2>&1) \
 case "$purl_out" in
   *"NOTE: multiple components share a purl"*) ;;
   *) fail "shared-purl SBOM should still emit the purl NOTE" ;;
+esac
+
+# A spec version outside REVIEWED_SPEC_VERSIONS is a NOTE, not a PROBLEM:
+# schema validation is skipped for it rather than run against the wrong
+# version, so it must pass error mode while still emitting the NOTE.
+spec_out=$(bash "$lint" "$here/future-spec-sbom.json" error 2>&1) \
+  || fail "unreviewed spec version should pass error mode (skipped validation is a NOTE)"
+case "$spec_out" in
+  *"NOTE: CycloneDX 9.9 is outside the reviewed set"*) ;;
+  *) fail "unreviewed spec version should still emit the spec-version NOTE" ;;
 esac
 
 # Invalid mode is rejected.
