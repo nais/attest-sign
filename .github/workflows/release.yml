@@ -43,59 +43,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
-      # If a previous run published a release but failed before (or while)
-      # moving the floating major tag, the floating tag is left pointing at an
-      # older commit. Fix that here, before computing a new version, so the
-      # repair happens on every run regardless of what caused the drift, and a
-      # rerun never silently skips it in favor of allocating the next version.
-      - name: Reconcile floating major tag
-        if: ${{ (inputs.dry_run || 'true') == 'false' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_LINE: ${{ inputs.release_line || '2' }}
-        run: |
-          set -e
-
-          git fetch --tags --force
-
-          if ! [[ "$RELEASE_LINE" =~ ^(0|[1-9][0-9]*)$ ]]; then
-            echo "::error::release_line must be a non-negative integer with no leading zeros"
-            exit 1
-          fi
-
-          latest_tag=$(git tag -l "v${RELEASE_LINE}.*.*" \
-            | grep -E "^v${RELEASE_LINE}\.[0-9]+\.[0-9]+$" \
-            | sort -V \
-            | tail -n 1 || true)
-
-          if [ -z "$latest_tag" ]; then
-            echo "No existing tag on v${RELEASE_LINE}; nothing to reconcile"
-            exit 0
-          fi
-
-          # Only reconcile against a tag that actually has a published release.
-          # A tag with no release behind it isn't this line's current release
-          # yet, so it's not something to point the floating tag at.
-          if ! gh release view "$latest_tag" >/dev/null 2>&1; then
-            echo "Latest tag $latest_tag has no published release yet; nothing to reconcile"
-            exit 0
-          fi
-
-          major_tag="v${RELEASE_LINE}"
-          current="$(git rev-parse "refs/tags/${major_tag}^{commit}" 2>/dev/null || echo "")"
-          target="$(git rev-parse "refs/tags/${latest_tag}^{commit}")"
-
-          if [ "$current" = "$target" ]; then
-            echo "Floating tag '$major_tag' already points at $latest_tag"
-            exit 0
-          fi
-
-          echo "Repairing floating tag '$major_tag' -> $latest_tag (stale from a previous run)"
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f "$major_tag" "$latest_tag"
-          git push origin -f "$major_tag"
-
       - name: Compute next release & deployment tags
         id: tags
         env:
@@ -204,9 +151,7 @@ jobs:
 
           # gh release create both creates the tag (at --target) and publishes the
           # release in one API call, so a failure here never leaves an orphan
-          # tag with no release behind it. If the floating-tag push below fails,
-          # "Reconcile floating major tag" repairs it on the next run before any
-          # new version is allocated.
+          # tag with no release behind it.
           notes_args=()
           if [ -n "$PREVIOUS_TAG" ]; then
             notes_args+=(--notes-start-tag "$PREVIOUS_TAG")
@@ -217,7 +162,17 @@ jobs:
             --generate-notes \
             "${notes_args[@]}"
 
-          git fetch --tags --force
           echo "Updating floating tag '$MAJOR_TAG' to $NEW_TAG"
-          git tag -f "$MAJOR_TAG" "$NEW_TAG"
-          git push origin -f "$MAJOR_TAG"
+          for attempt in 1 2 3; do
+            git tag -f "$MAJOR_TAG" "$NEW_TAG"
+            if git push origin -f "$MAJOR_TAG"; then
+              break
+            fi
+            echo "::warning::Push of floating tag '$MAJOR_TAG' failed (attempt $attempt); retrying"
+            sleep 5
+            git fetch --tags --force
+            if [ "$attempt" = 3 ]; then
+              echo "::error::Failed to push floating tag '$MAJOR_TAG' after $attempt attempts; release $NEW_TAG was published, fix the tag manually"
+              exit 1
+            fi
+          done
