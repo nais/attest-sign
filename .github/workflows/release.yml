@@ -27,8 +27,8 @@ on:
         default: patch
 
 concurrency:
-  group: attest-sign-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || (github.event.pull_request.number || github.ref) }}
-  cancel-in-progress: true
+  group: attest-sign-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && (inputs.release_line || '2') || (github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   test:
