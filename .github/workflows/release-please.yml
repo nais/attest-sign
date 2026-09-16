@@ -1,0 +1,64 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # ratchet:googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  update-floating-tag:
+    name: Update floating major tag
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Move floating major tag to the new release
+        env:
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -e
+
+          if ! [[ "$TAG_NAME" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected tag name from release-please: $TAG_NAME"
+            exit 1
+          fi
+
+          major_tag="v${BASH_REMATCH[1]}"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch --tags --force
+
+          git tag -f "$major_tag" "$TAG_NAME"
+          git push origin -f "$major_tag"
