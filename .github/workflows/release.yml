@@ -48,22 +48,12 @@ jobs:
         env:
           RELEASE_LINE: ${{ inputs.release_line || '2' }}
           RELEASE_TYPE: ${{ inputs.release_type || 'patch' }}
-          # Only the plain `push` trigger runs with no workflow_dispatch inputs
-          # (release_line/release_type fall back to fixed defaults regardless
-          # of which lines actually have tags). That run only builds and tests
-          # the composite action - it never reaches the tag/release step below
-          # (gated on dry_run == 'false') - so a missing tag on the selected
-          # line must not block it. A workflow_dispatch run, dry-run or not, is
-          # an explicit choice and still gets full validation.
           IS_PUSH_TRIGGER: ${{ github.event_name == 'push' }}
         run: |
           set -e
 
           git fetch --tags --force
 
-          # ^0$ still allows the single valid zero; ^0[0-9]+ rejects leading
-          # zeros like 02, which would otherwise produce the non-semver
-          # "v02.0.0" / "v02" instead of major line 2.
           if ! [[ "$RELEASE_LINE" =~ ^(0|[1-9][0-9]*)$ ]]; then
             echo "::error::release_line must be a non-negative integer with no leading zeros"
             exit 1
@@ -163,9 +153,6 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
 
-          # gh release create both creates the tag (at --target) and publishes the
-          # release in one API call, so a failure here never leaves an orphan
-          # tag with no release behind it.
           notes_args=()
           if [ -n "$PREVIOUS_TAG" ]; then
             notes_args+=(--notes-start-tag "$PREVIOUS_TAG")
@@ -178,9 +165,6 @@ jobs:
 
           echo "Updating floating tag '$MAJOR_TAG' to $NEW_TAG"
           for attempt in 1 2 3; do
-            # $NEW_TAG was only just created via the GitHub API above and isn't
-            # a local ref in this checkout; $GITHUB_SHA is the commit that was
-            # actually released and is always present locally.
             git tag -f "$MAJOR_TAG" "$GITHUB_SHA"
             if git push origin -f "$MAJOR_TAG"; then
               break
