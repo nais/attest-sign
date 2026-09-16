@@ -164,7 +164,10 @@ jobs:
 
           echo "Updating floating tag '$MAJOR_TAG' to $NEW_TAG"
           for attempt in 1 2 3; do
-            git tag -f "$MAJOR_TAG" "$NEW_TAG"
+            # $NEW_TAG was only just created via the GitHub API above and isn't
+            # a local ref in this checkout; $GITHUB_SHA is the commit that was
+            # actually released and is always present locally.
+            git tag -f "$MAJOR_TAG" "$GITHUB_SHA"
             if git push origin -f "$MAJOR_TAG"; then
               break
             fi
