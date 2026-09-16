@@ -142,19 +142,21 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
 
-          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-          git push origin "$NEW_TAG"
-
+          # gh release create both creates the tag (at --target) and publishes the
+          # release in one API call. That keeps the two operations atomic: a
+          # failure here never leaves an orphan tag with no release behind it,
+          # so a re-run of this job is safe and won't skip the version.
           notes_args=()
           if [ -n "$PREVIOUS_TAG" ]; then
             notes_args+=(--notes-start-tag "$PREVIOUS_TAG")
           fi
           gh release create "$NEW_TAG" \
-            --verify-tag \
+            --target "$GITHUB_SHA" \
             --title "$NEW_TAG" \
             --generate-notes \
             "${notes_args[@]}"
 
+          git fetch --tags --force
           echo "Updating floating tag '$MAJOR_TAG' to $NEW_TAG"
           git tag -f "$MAJOR_TAG" "$NEW_TAG"
           git push origin -f "$MAJOR_TAG"
