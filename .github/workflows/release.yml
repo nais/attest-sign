@@ -27,7 +27,7 @@ on:
         default: patch
 
 concurrency:
-  group: attest-sign-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: attest-sign-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || (github.event.pull_request.number || github.ref) }}
   cancel-in-progress: true
 
 jobs:
@@ -42,6 +42,60 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Reconcile floating major tag
+        id: reconcile
+        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run || 'true') == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_LINE: ${{ inputs.release_line || '2' }}
+        run: |
+          set -e
+
+          git fetch --tags --force
+
+          if ! [[ "$RELEASE_LINE" =~ ^(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::release_line must be a non-negative integer with no leading zeros"
+            exit 1
+          fi
+
+          latest_tag=$(git tag -l "v${RELEASE_LINE}.*.*" \
+            | grep -E "^v${RELEASE_LINE}\.[0-9]+\.[0-9]+$" \
+            | sort -V \
+            | tail -n 1 || true)
+
+          major_tag="v${RELEASE_LINE}"
+
+          if [ -z "$latest_tag" ]; then
+            echo "repaired=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          current="$(git rev-parse "refs/tags/${major_tag}^{commit}" 2>/dev/null || echo "")"
+          target="$(git rev-parse "refs/tags/${latest_tag}^{commit}")"
+
+          if [ "$current" = "$target" ]; then
+            echo "repaired=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Floating tag '$major_tag' does not match latest release '$latest_tag'; repairing"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            git tag -f "$major_tag" "$target"
+            if git push origin -f "$major_tag"; then
+              echo "repaired=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::warning::Push of floating tag '$major_tag' failed (attempt $attempt); retrying"
+            sleep 5
+            git fetch --tags --force
+          done
+
+          echo "::error::Failed to repair floating tag '$major_tag' after 3 attempts"
+          exit 1
 
       - name: Compute next release & deployment tags
         id: tags
@@ -141,7 +195,7 @@ jobs:
           VAR: image=${{ steps.docker_build_push.outputs.image }},name=attest-sign-integration-test
 
       - name: Publish release and update floating major tag
-        if: ${{ success() && (inputs.dry_run || 'true') == 'false' }}
+        if: ${{ success() && (inputs.dry_run || 'true') == 'false' && steps.reconcile.outputs.repaired != 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_TAG: ${{ steps.tags.outputs.new_tag }}
