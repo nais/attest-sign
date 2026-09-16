@@ -53,8 +53,11 @@ jobs:
 
           git fetch --tags --force
 
-          if ! [[ "$RELEASE_LINE" =~ ^[0-9]+$ ]]; then
-            echo "::error::release_line must be a non-negative integer"
+          # ^0$ still allows the single valid zero; ^0[0-9]+ rejects leading
+          # zeros like 02, which would otherwise produce the non-semver
+          # "v02.0.0" / "v02" instead of major line 2.
+          if ! [[ "$RELEASE_LINE" =~ ^(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::release_line must be a non-negative integer with no leading zeros"
             exit 1
           fi
 
@@ -64,29 +67,33 @@ jobs:
             | tail -n 1 || true)
 
           major="$RELEASE_LINE"
-          if [ -n "$latest_tag" ]; then
-            minor=$(echo "$latest_tag" | cut -d'.' -f2)
-            patch=$(echo "$latest_tag" | cut -d'.' -f3)
-          else
-            minor=0
-            patch=0
-          fi
 
           case "$RELEASE_TYPE" in
             patch)
+              if [ -z "$latest_tag" ]; then
+                echo "::error::No releases found on v${RELEASE_LINE}; use release_type: major to bootstrap this line"
+                exit 1
+              fi
+              minor=$(echo "$latest_tag" | cut -d'.' -f2)
+              patch=$(echo "$latest_tag" | cut -d'.' -f3)
               patch=$((patch + 1))
               ;;
             minor)
+              if [ -z "$latest_tag" ]; then
+                echo "::error::No releases found on v${RELEASE_LINE}; use release_type: major to bootstrap this line"
+                exit 1
+              fi
+              minor=$(echo "$latest_tag" | cut -d'.' -f2)
               minor=$((minor + 1))
               patch=0
               ;;
             major)
-              minor=0
-              patch=0
               if [ -n "$latest_tag" ]; then
                 echo "::error::Release line v${RELEASE_LINE} already exists; use patch or minor"
                 exit 1
               fi
+              minor=0
+              patch=0
               ;;
             *)
               echo "::error::release_type must be patch, minor, or major"
