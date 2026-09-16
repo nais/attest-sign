@@ -11,11 +11,20 @@ on:
         required: false
         type: string
         default: 'true'
-      major:
+      release_line:
+        description: "Major release line to update, for example 2 for v2."
+        required: true
         type: string
-        required: false
-        description: "Major version number to use for the release tag."
         default: "2"
+      release_type:
+        description: "Version to publish: patch/minor increment the selected line; major creates its vX.0.0."
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 concurrency:
   group: attest-sign-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -37,56 +46,67 @@ jobs:
       - name: Compute next release & deployment tags
         id: tags
         env:
-          REQUESTED_MAJOR: ${{ inputs.major || '2' }}
+          RELEASE_LINE: ${{ inputs.release_line || '2' }}
+          RELEASE_TYPE: ${{ inputs.release_type || 'patch' }}
         run: |
           set -e
 
           git fetch --tags --force
 
-          requested_major="${REQUESTED_MAJOR}"
-          latest_tag=$(git tag -l "v${requested_major}.*" | sort -V | tail -n 1 || echo "")
-
-          if [ -z "$latest_tag" ]; then
-            major="$requested_major"
-            minor=0
-            patch=0
-          else
-            major=$(echo "$latest_tag" | cut -d'.' -f1 | sed 's/v//')
-            minor=$(echo "$latest_tag" | cut -d'.' -f2)
-            patch=$(echo "$latest_tag" | cut -d'.' -f3)
+          if ! [[ "$RELEASE_LINE" =~ ^[0-9]+$ ]]; then
+            echo "::error::release_line must be a non-negative integer"
+            exit 1
           fi
 
-          new_patch=$((patch + 1))
-          new_tag="v${major}.${minor}.${new_patch}"
+          latest_tag=$(git tag -l "v${RELEASE_LINE}.*.*" \
+            | grep -E "^v${RELEASE_LINE}\.[0-9]+\.[0-9]+$" \
+            | sort -V \
+            | tail -n 1 || true)
+
+          major="$RELEASE_LINE"
+          if [ -n "$latest_tag" ]; then
+            minor=$(echo "$latest_tag" | cut -d'.' -f2)
+            patch=$(echo "$latest_tag" | cut -d'.' -f3)
+          else
+            minor=0
+            patch=0
+          fi
+
+          case "$RELEASE_TYPE" in
+            patch)
+              patch=$((patch + 1))
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            major)
+              minor=0
+              patch=0
+              if [ -n "$latest_tag" ]; then
+                echo "::error::Release line v${RELEASE_LINE} already exists; use patch or minor"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::release_type must be patch, minor, or major"
+              exit 1
+              ;;
+          esac
+
+          new_tag="v${major}.${minor}.${patch}"
 
           timestamp=$(date -u +"%Y%m%d-%H%M%S")
           deploy_tag="${new_tag}-${timestamp}"
 
+          echo "Previous release tag: ${latest_tag:-none}"
           echo "Computed release tag: $new_tag"
           echo "Computed deploy tag:  $deploy_tag"
 
+          echo "previous_tag=${latest_tag}" >> "$GITHUB_OUTPUT"
           echo "new_tag=${new_tag}" >> "$GITHUB_OUTPUT"
           echo "deploy_tag=${deploy_tag}" >> "$GITHUB_OUTPUT"
-
-      - name: Create Release Tag
-        if: success()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DRY_RUN: ${{ inputs.dry_run || 'true' }}
-        run: |
-          set -e
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          new_tag="${{ steps.tags.outputs.new_tag }}"
-
-          git tag -a "$new_tag" -m "Release $new_tag"
-
-          if [ "$DRY_RUN" = "false" ]; then
-            echo "Pushing release tag $new_tag"
-            git push origin "$new_tag"
-          else
-            echo "Dry run enabled, skipping tag push."
-          fi
+          echo "major_tag=v${major}" >> "$GITHUB_OUTPUT"
 
       - name: Push docker image to GAR
         id: docker_build_push
@@ -109,20 +129,32 @@ jobs:
           RESOURCE: test/nais.yml
           VAR: image=${{ steps.docker_build_push.outputs.image }},name=attest-sign-integration-test
 
-      - name: Update Floating major tag
+      - name: Publish release and update floating major tag
         if: ${{ success() && (inputs.dry_run || 'true') == 'false' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REQUESTED_MAJOR: ${{ inputs.major || '2' }}
+          NEW_TAG: ${{ steps.tags.outputs.new_tag }}
+          PREVIOUS_TAG: ${{ steps.tags.outputs.previous_tag }}
+          MAJOR_TAG: ${{ steps.tags.outputs.major_tag }}
         run: |
           set -e
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags --force
 
-          major="${REQUESTED_MAJOR}"
-          new_tag="${{ steps.tags.outputs.new_tag }}"
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+          git push origin "$NEW_TAG"
 
-          echo "Updating floating tag 'v${major}' → $new_tag"
-          git tag -f "v${major}" "$new_tag"
-          git push origin -f "v${major}"
+          notes_args=()
+          if [ -n "$PREVIOUS_TAG" ]; then
+            notes_args+=(--notes-start-tag "$PREVIOUS_TAG")
+          fi
+          gh release create "$NEW_TAG" \
+            --verify-tag \
+            --title "$NEW_TAG" \
+            --generate-notes \
+            "${notes_args[@]}"
+
+          echo "Updating floating tag '$MAJOR_TAG' to $NEW_TAG"
+          git tag -f "$MAJOR_TAG" "$NEW_TAG"
+          git push origin -f "$MAJOR_TAG"
