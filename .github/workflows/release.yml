@@ -83,19 +83,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          for attempt in 1 2 3; do
-            git tag -f "$major_tag" "$target"
-            if git push origin -f "$major_tag"; then
-              echo "repaired=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "::warning::Push of floating tag '$major_tag' failed (attempt $attempt); retrying"
-            sleep 5
-            git fetch --tags --force
-          done
-
-          echo "::error::Failed to repair floating tag '$major_tag' after 3 attempts"
-          exit 1
+          git tag -f "$major_tag" "$target"
+          git push origin -f "$major_tag"
+          echo "repaired=true" >> "$GITHUB_OUTPUT"
 
       - name: Compute next release & deployment tags
         id: tags
@@ -218,16 +208,5 @@ jobs:
             "${notes_args[@]}"
 
           echo "Updating floating tag '$MAJOR_TAG' to $NEW_TAG"
-          for attempt in 1 2 3; do
-            git tag -f "$MAJOR_TAG" "$GITHUB_SHA"
-            if git push origin -f "$MAJOR_TAG"; then
-              break
-            fi
-            echo "::warning::Push of floating tag '$MAJOR_TAG' failed (attempt $attempt); retrying"
-            sleep 5
-            git fetch --tags --force
-            if [ "$attempt" = 3 ]; then
-              echo "::error::Failed to push floating tag '$MAJOR_TAG' after $attempt attempts; release $NEW_TAG was published, fix the tag manually"
-              exit 1
-            fi
-          done
+          git tag -f "$MAJOR_TAG" "$GITHUB_SHA"
+          git push origin -f "$MAJOR_TAG"
