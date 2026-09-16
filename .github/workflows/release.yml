@@ -48,6 +48,14 @@ jobs:
         env:
           RELEASE_LINE: ${{ inputs.release_line || '2' }}
           RELEASE_TYPE: ${{ inputs.release_type || 'patch' }}
+          # Only the plain `push` trigger runs with no workflow_dispatch inputs
+          # (release_line/release_type fall back to fixed defaults regardless
+          # of which lines actually have tags). That run only builds and tests
+          # the composite action - it never reaches the tag/release step below
+          # (gated on dry_run == 'false') - so a missing tag on the selected
+          # line must not block it. A workflow_dispatch run, dry-run or not, is
+          # an explicit choice and still gets full validation.
+          IS_PUSH_TRIGGER: ${{ github.event_name == 'push' }}
         run: |
           set -e
 
@@ -68,27 +76,33 @@ jobs:
 
           major="$RELEASE_LINE"
 
+          if [ -z "$latest_tag" ] && [ "$RELEASE_TYPE" != "major" ] && [ "$IS_PUSH_TRIGGER" != "true" ]; then
+            echo "::error::No releases found on v${RELEASE_LINE}; use release_type: major to bootstrap this line"
+            exit 1
+          fi
+
           case "$RELEASE_TYPE" in
             patch)
-              if [ -z "$latest_tag" ]; then
-                echo "::error::No releases found on v${RELEASE_LINE}; use release_type: major to bootstrap this line"
-                exit 1
+              if [ -n "$latest_tag" ]; then
+                minor=$(echo "$latest_tag" | cut -d'.' -f2)
+                patch=$(echo "$latest_tag" | cut -d'.' -f3)
+                patch=$((patch + 1))
+              else
+                minor=0
+                patch=1
               fi
-              minor=$(echo "$latest_tag" | cut -d'.' -f2)
-              patch=$(echo "$latest_tag" | cut -d'.' -f3)
-              patch=$((patch + 1))
               ;;
             minor)
-              if [ -z "$latest_tag" ]; then
-                echo "::error::No releases found on v${RELEASE_LINE}; use release_type: major to bootstrap this line"
-                exit 1
+              if [ -n "$latest_tag" ]; then
+                minor=$(echo "$latest_tag" | cut -d'.' -f2)
+                minor=$((minor + 1))
+              else
+                minor=1
               fi
-              minor=$(echo "$latest_tag" | cut -d'.' -f2)
-              minor=$((minor + 1))
               patch=0
               ;;
             major)
-              if [ -n "$latest_tag" ]; then
+              if [ -n "$latest_tag" ] && [ "$IS_PUSH_TRIGGER" != "true" ]; then
                 echo "::error::Release line v${RELEASE_LINE} already exists; use patch or minor"
                 exit 1
               fi
