@@ -27,8 +27,7 @@ jobs:
         run: |
           set -e
 
-          timestamp=$(date -u +"%Y%m%d-%H%M%S")
-          deploy_tag="main-${timestamp}"
+          deploy_tag="main-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           echo "deploy_tag=${deploy_tag}" >> "$GITHUB_OUTPUT"
 
