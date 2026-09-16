@@ -1,0 +1,54 @@
+name: Deploy Attest Sign Integration Test
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: attest-sign-integration-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build container and push to GAR
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Compute deployment tag
+        id: tags
+        run: |
+          set -e
+
+          timestamp=$(date -u +"%Y%m%d-%H%M%S")
+          deploy_tag="main-${timestamp}"
+
+          echo "deploy_tag=${deploy_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Push docker image to GAR
+        id: docker_build_push
+        uses: nais/docker-build-push@8e41f1f58749b9248e376c25d33bfbdd2b1163c0 # ratchet:nais/docker-build-push@v0
+        with:
+          team: nais-verification
+          tag: ${{ steps.tags.outputs.deploy_tag }}
+          salsa: 'false'
+          docker_context: 'test'
+
+      - name: Attest and sign test image
+        uses: './'
+        with:
+          image_ref: ${{ steps.docker_build_push.outputs.image }}
+
+      - name: Deploy attest-sign-integration-test to NAIS
+        uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6 # ratchet:nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: test/nais.yml
+          VAR: image=${{ steps.docker_build_push.outputs.image }},name=attest-sign-integration-test
