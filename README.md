@@ -89,7 +89,7 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 
 1. **Validation**: Ensures the image reference is in the correct format (`<image>@<digest>`)
 2. **Trivy Java DB Caching**: Fetches and caches the Trivy Java database using multiple repository mirrors to avoid rate limiting
-3. **SBOM Generation**: Uses Trivy (v0.70.0) to scan the image and generate a CycloneDX SBOM unless one is provided
+3. **SBOM Generation**: Uses Trivy (v0.74.0) to scan the image and generate a CycloneDX SBOM unless one is provided
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
 5. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
 6. **Output**: Returns the final SBOM path for downstream use
