@@ -114,3 +114,14 @@ The action caches the `trivy-java-db` artifact which is updated weekly by the Tr
 - Cache is automatically invalidated when the database digest changes
 - No manual cache management is required
 - Significantly reduces GitHub API rate limiting impact on subsequent runs
+
+## Commit Message Convention
+
+Releases are managed by [release-please](https://github.com/googleapis/release-please) based on [Conventional Commits](https://www.conventionalcommits.org/). Commit type determines the changelog section and version bump, so use the type that matches the actual change:
+
+- `fix:` — bug fixes (patch bump)
+- `feat:` — new features (minor bump)
+- `build(deps):` / `chore(deps):` — pinned tool or dependency version bumps (e.g. Trivy, cosign), including manual updates that aren't from Dependabot
+- `chore:`, `docs:`, `style:`, `refactor:`, `test:`, `ci:` — no release triggered
+
+Do not use `fix:` for a version bump alone; it misrepresents the change as a bug fix in the changelog.
