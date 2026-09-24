@@ -43,13 +43,15 @@ trap 'rm -f "$work"' EXIT
 
 jq '
   # One component per bom-ref, kept in first-seen order (a plain object
-  # accumulator preserves insertion order; group_by would sort). The first
-  # occurrence wins every field except `properties`, which is unioned across the
-  # duplicates - that is where Trivy records the per-layer data (LayerDigest,
-  # ...). `properties` is an unordered name/value bag, safe to merge; richer
-  # fields (licenses, hashes) might not be. Components with no bom-ref are kept.
+  # accumulator preserves insertion order; group_by would sort). Duplicates
+  # must be identical other than `properties`; otherwise normalization aborts
+  # rather than silently discarding security-relevant component data.
+  # `properties` is an unordered name/value bag, safe to merge. Components with
+  # no bom-ref are kept.
   def fold_properties($dup):
-    if ($dup.properties | type) == "array"
+    if (del(.properties) != ($dup | del(.properties)))
+    then error("conflicting components share bom-ref " + .["bom-ref"])
+    elif ($dup.properties | type) == "array"
     then .properties = (((.properties // []) + $dup.properties) | unique)
     else . end;
   def dedupe_components:

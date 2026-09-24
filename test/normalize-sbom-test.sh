@@ -62,19 +62,20 @@ assert_eq "1.7 fixture components deduplicated" "$(jq '.components | length' "$s
 cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_7 --fail-on-errors >/dev/null \
   || fail "normalized SBOM does not pass 1.7 schema validation"
 
-# bom-ref groups keep first-seen order, and the first occurrence wins every
-# non-properties field.
-order="$work/order.json"
+# Conflicting duplicate bom-refs are rejected so normalization never silently
+# drops component data; the atomic write keeps the original BOM intact.
+conflict="$work/conflict.json"
 jq '.components = [
       {"type": "library", "bom-ref": "dup", "name": "first",  "version": "1.0.0"},
       {"type": "library", "bom-ref": "solo", "name": "solo",   "version": "1"},
       {"type": "library", "bom-ref": "dup", "name": "second", "version": "2.0.0"}
-    ] | .dependencies = [{"ref": "dup", "dependsOn": []}]' "$here/duplicate-sbom.json" > "$order"
-bash "$repo/scripts/normalize-sbom.sh" "$order" >/dev/null
-assert_eq "duplicate folded, order preserved" \
-  "$(jq -c '[.components[]."bom-ref"]' "$order")" '["dup","solo"]'
-assert_eq "first occurrence wins non-properties fields" \
-  "$(jq -r '.components[] | select(."bom-ref" == "dup") | .version' "$order")" "1.0.0"
+    ] | .dependencies = [{"ref": "dup", "dependsOn": []}]' "$here/duplicate-sbom.json" > "$conflict"
+before="$(shasum -a 256 "$conflict")"
+if bash "$repo/scripts/normalize-sbom.sh" "$conflict" >/dev/null 2>&1; then
+  fail "conflicting components with the same bom-ref should fail normalization"
+fi
+assert_eq "failed normalization leaves the original BOM intact" \
+  "$(shasum -a 256 "$conflict")" "$before"
 
 # A malformed (non-array) dependsOn on a duplicated ref must not abort the run.
 malformed="$work/malformed.json"
