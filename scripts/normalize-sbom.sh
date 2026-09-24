@@ -48,8 +48,12 @@ jq '
   # rather than silently discarding security-relevant component data.
   # `properties` is an unordered name/value bag, safe to merge. Components with
   # no bom-ref are kept.
+  def properties_are_valid:
+    if has("properties") then (.properties | type) == "array" else true end;
   def fold_properties($dup):
-    if (del(.properties) != ($dup | del(.properties)))
+    if (properties_are_valid | not) or ($dup | properties_are_valid | not)
+    then error("non-array properties on components sharing bom-ref " + .["bom-ref"])
+    elif (del(.properties) != ($dup | del(.properties)))
     then error("conflicting components share bom-ref " + .["bom-ref"])
     elif ($dup.properties | type) == "array"
     then .properties = (((.properties // []) + $dup.properties) | unique)

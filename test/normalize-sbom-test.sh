@@ -77,6 +77,19 @@ fi
 assert_eq "failed normalization leaves the original BOM intact" \
   "$(shasum -a 256 "$conflict")" "$before"
 
+# A duplicate with malformed properties must not be silently discarded.
+malformed_properties="$work/malformed-properties.json"
+jq '.components = [
+      {"type": "library", "bom-ref": "dup", "name": "dup", "version": "1.0.0"},
+      {"type": "library", "bom-ref": "dup", "name": "dup", "version": "1.0.0", "properties": "not-an-array"}
+    ] | .dependencies = [{"ref": "dup", "dependsOn": []}]' "$here/duplicate-sbom.json" > "$malformed_properties"
+before="$(shasum -a 256 "$malformed_properties")"
+if bash "$repo/scripts/normalize-sbom.sh" "$malformed_properties" >/dev/null 2>&1; then
+  fail "a duplicate with non-array properties should fail normalization"
+fi
+assert_eq "malformed duplicate properties leave the original BOM intact" \
+  "$(shasum -a 256 "$malformed_properties")" "$before"
+
 # A malformed (non-array) dependsOn on a duplicated ref must not abort the run.
 malformed="$work/malformed.json"
 jq '.dependencies = [
