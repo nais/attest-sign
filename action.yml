@@ -143,11 +143,9 @@ runs:
 
     - name: Install cyclonedx-cli
       if: inputs.additional_sboms != '' || steps.sbom-check.outputs.enabled == 'true'
-      env:
-        ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "$ACTION_PATH/scripts/install-cyclonedx-cli.sh"
+        bash "$GITHUB_ACTION_PATH/scripts/install-cyclonedx-cli.sh"
 
     - name: Prepare final SBOM
       id: prepare-sbom
@@ -191,10 +189,9 @@ runs:
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
         MODE: ${{ inputs.sbom_check }}
-        ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        if bash "$ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"; then
+        if bash "$GITHUB_ACTION_PATH/scripts/normalize-sbom.sh" "$FINAL_SBOM"; then
           exit 0
         fi
         if [ "$MODE" = error ]; then
@@ -208,10 +205,9 @@ runs:
       env:
         FINAL_SBOM: ${{ steps.prepare-sbom.outputs.final_sbom }}
         MODE: ${{ inputs.sbom_check }}
-        ACTION_PATH: ${{ github.action_path }}
       shell: 'bash'
       run: |
-        bash "$ACTION_PATH/scripts/lint-sbom.sh" "$FINAL_SBOM" "$MODE"
+        bash "$GITHUB_ACTION_PATH/scripts/lint-sbom.sh" "$FINAL_SBOM" "$MODE"
 
     - name: Debug SBOM summary
       env:
