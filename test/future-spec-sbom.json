@@ -1,0 +1,21 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "9.9",
+  "version": 1,
+  "metadata": {
+    "component": { "type": "application", "name": "future-spec-fixture", "version": "1.0.0" }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/x@1.0.0",
+      "name": "x",
+      "version": "1.0.0",
+      "purl": "pkg:pypi/x@1.0.0"
+    }
+  ],
+  "dependencies": [
+    { "ref": "pkg:pypi/x@1.0.0", "dependsOn": [] }
+  ]
+}
