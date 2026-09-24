@@ -63,7 +63,12 @@ if [ "$reviewed" = yes ]; then
     problems=1
   fi
 else
-  echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it, schema validation skipped"
+  if [ "$spec_version" = unknown ]; then
+    echo "LINT: CycloneDX specVersion is missing or unreadable" >&2
+    problems=1
+  else
+    echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it, schema validation skipped"
+  fi
 fi
 
 # check VAR LABEL PROGRAM: run jq and store its newline-separated output in VAR.
