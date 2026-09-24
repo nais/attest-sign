@@ -173,8 +173,21 @@ runs:
         EOF
 
         if [ "${#sboms[@]}" -gt 1 ]; then
+          merge_version="$(
+            for sbom in "${sboms[@]}"; do
+              jq -er '.specVersion | strings' "$sbom"
+            done | sort -V | tail -n 1
+          )"
+          case "$merge_version" in
+            1.[0-7]) ;;
+            *)
+              echo "::error::Cannot merge SBOMs with unsupported CycloneDX specVersion '$merge_version'"
+              exit 1
+              ;;
+          esac
           merged_sbom="$(mktemp "${RUNNER_TEMP}/merged-sbom.XXXXXX.json")"
-          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json
+          cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json \
+            --output-version "v${merge_version//./_}"
           final_sbom="$merged_sbom"
         fi
 
