@@ -62,6 +62,23 @@ assert_eq "1.7 fixture components deduplicated" "$(jq '.components | length' "$s
 cyclonedx validate --input-file "$sbom17" --input-format json --input-version v1_7 --fail-on-errors >/dev/null \
   || fail "normalized SBOM does not pass 1.7 schema validation"
 
+# A valid BOM must not be rewritten, even if its JSON formatting differs from jq's.
+valid="$work/valid.json"
+jq -c '.components |= .[:1]' "$here/cdx17-sbom.json" > "$valid"
+cyclonedx validate --input-file "$valid" --input-format json --input-version v1_7 --fail-on-errors >/dev/null \
+  || fail "valid fixture does not pass 1.7 schema validation"
+before="$(shasum -a 256 "$valid")"
+bash "$repo/scripts/normalize-sbom.sh" "$valid"
+assert_eq "valid SBOM remains byte-for-byte unchanged" "$(shasum -a 256 "$valid")" "$before"
+
+# Repeated edges need normalization even when components and dependency refs are unique.
+repeated_edges="$work/repeated-edges.json"
+jq '.components |= .[:1] | .dependencies[0].dependsOn = ["pkg:pypi/x@1.0.0", "pkg:pypi/x@1.0.0"]' \
+  "$here/cdx17-sbom.json" > "$repeated_edges"
+bash "$repo/scripts/normalize-sbom.sh" "$repeated_edges"
+assert_eq "repeated dependsOn items removed" \
+  "$(jq -c '.dependencies[0].dependsOn' "$repeated_edges")" '["pkg:pypi/x@1.0.0"]'
+
 # Conflicting duplicate bom-refs are rejected so normalization never silently
 # drops component data; the atomic write keeps the original BOM intact.
 conflict="$work/conflict.json"

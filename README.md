@@ -96,6 +96,7 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
 5. **SBOM Normalization**: Unless `sbom_check: off`:
    - folds duplicate components (exact same `bom-ref`) into one, unioning their `properties`, and de-duplicates / merges `dependencies` and `dependsOn` entries. Trivy emits a package as several components sharing one `bom-ref` when it is present in multiple image layers, which makes the BOM invalid and causes downstream consumers such as Dependency-Track to reject the attestation.
+   - leaves SBOM files without these duplicates byte-for-byte unchanged. When duplicates are found, the normalized JSON may have different formatting and array order.
    - preserves the declared CycloneDX version. Trivy emits CycloneDX 1.7 from v0.71, which is supported by Dependency-Track 4.14.4.
 
    In `warn` mode a normalization failure is logged and the SBOM is attested as-is; in `error` mode it fails the build.

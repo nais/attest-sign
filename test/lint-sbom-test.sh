@@ -22,6 +22,33 @@ set -euo pipefail
 # shellcheck source=test/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 lint="$repo/scripts/lint-sbom.sh"
+# shellcheck source=scripts/sbom-policy.sh
+source "$repo/scripts/sbom-policy.sh"
+
+for mode in warn error off; do
+  sbom_check_mode_valid "$mode" || fail "mode $mode should be accepted"
+done
+for mode in bogus 'warn error' ''; do
+  if sbom_check_mode_valid "$mode"; then
+    fail "unknown mode '$mode' should be rejected"
+  fi
+done
+for version in 1.0 1.3 1.4 1.7; do
+  sbom_spec_supported_for_merge "$version" || fail "merge should support $version"
+done
+for version in 1.4 1.5 1.6 1.7; do
+  sbom_spec_reviewed_for_lint "$version" || fail "lint should review $version"
+done
+for version in 1.0 1.3 1.8 9.9 '1.4 1.5'; do
+  if sbom_spec_reviewed_for_lint "$version"; then
+    fail "lint should not treat $version as reviewed"
+  fi
+done
+for version in 1.8 9.9 invalid; do
+  if sbom_spec_supported_for_merge "$version"; then
+    fail "merge should reject $version"
+  fi
+done
 
 # Clean SBOM passes in every mode.
 bash "$lint" "$here/npm-sbom.json" error >/dev/null || fail "clean SBOM should pass lint in error mode"

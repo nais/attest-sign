@@ -20,21 +20,17 @@
 
 set -euo pipefail
 
-# CycloneDX versions the field assumptions here (bom-ref, dependencies[].ref /
-# dependsOn / provides, purl) have been checked against.
-REVIEWED_SPEC_VERSIONS="1.4 1.5 1.6 1.7"
+# shellcheck source=scripts/sbom-policy.sh
+source "$(dirname "${BASH_SOURCE[0]}")/sbom-policy.sh"
 
 sbom="${1:?usage: lint-sbom.sh <sbom.json> [error|warn|off]}"
 mode="${2:-warn}"
 
-case "$mode" in
-  error | warn) ;;
-  off) exit 0 ;;
-  *)
-    echo "lint-sbom: invalid mode '$mode' (expected error, warn or off)" >&2
-    exit 1
-    ;;
-esac
+if ! sbom_check_mode_valid "$mode"; then
+  echo "lint-sbom: invalid mode '$mode' (expected ${SBOM_CHECK_MODES// /, })" >&2
+  exit 1
+fi
+[ "$mode" != off ] || exit 0
 
 if [ ! -f "$sbom" ]; then
   echo "lint-sbom: file not found: $sbom" >&2
@@ -48,16 +44,11 @@ problems=0
 spec_version=$(jq -r '.specVersion // "unknown"' "$sbom" 2>/dev/null) || spec_version="unknown"
 [ -n "$spec_version" ] || spec_version="unknown"
 
-reviewed=no
-case " $REVIEWED_SPEC_VERSIONS " in
-  *" $spec_version "*) reviewed=yes ;;
-esac
-
 # Only schema-validate versions this script's field assumptions have been
 # checked against. A pinned cyclonedx-cli may not know how to validate a
 # newer spec at all - that must stay a NOTE, not a PROBLEM that fails
 # `error` mode on a BOM that is not actually defective.
-if [ "$reviewed" = yes ]; then
+if sbom_spec_reviewed_for_lint "$spec_version"; then
   if ! cyclonedx validate --input-file "$sbom" --input-format json --fail-on-errors \
     --input-version "v${spec_version//./_}"; then
     problems=1
@@ -67,7 +58,7 @@ else
     echo "LINT: CycloneDX specVersion is missing or unreadable" >&2
     problems=1
   else
-    echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it, schema validation skipped"
+    echo "NOTE: CycloneDX $spec_version is outside the reviewed set [$SBOM_REVIEWED_SPEC_VERSIONS]; bom-ref / dependencies / purl handling not re-verified for it, schema validation skipped"
   fi
 fi
 

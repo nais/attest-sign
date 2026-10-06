@@ -50,13 +50,11 @@ runs:
         MODE: ${{ inputs.sbom_check }}
       shell: 'bash'
       run: |
-        case "$MODE" in
-          warn|error|off) ;;
-          *)
-            echo "::error::sbom_check must be one of: warn, error, off (got '$MODE')"
-            exit 1
-            ;;
-        esac
+        source "$GITHUB_ACTION_PATH/scripts/sbom-policy.sh"
+        if ! sbom_check_mode_valid "$MODE"; then
+          echo "::error::sbom_check must be one of: ${SBOM_CHECK_MODES// /, } (got '$MODE')"
+          exit 1
+        fi
         if [ "$MODE" = off ]; then enabled=false; else enabled=true; fi
         echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
 
@@ -173,18 +171,16 @@ runs:
         EOF
 
         if [ "${#sboms[@]}" -gt 1 ]; then
+          source "$GITHUB_ACTION_PATH/scripts/sbom-policy.sh"
           merge_version="$(
             for sbom in "${sboms[@]}"; do
               jq -er '.specVersion | strings' "$sbom"
             done | sort -V | tail -n 1
           )"
-          case "$merge_version" in
-            1.[0-7]) ;;
-            *)
-              echo "::error::Cannot merge SBOMs with unsupported CycloneDX specVersion '$merge_version'"
-              exit 1
-              ;;
-          esac
+          if ! sbom_spec_supported_for_merge "$merge_version"; then
+            echo "::error::Cannot merge SBOMs with unsupported CycloneDX specVersion '$merge_version'"
+            exit 1
+          fi
           merged_sbom="$(mktemp "${RUNNER_TEMP}/merged-sbom.XXXXXX.json")"
           cyclonedx merge --input-files "${sboms[@]}" --output-file "$merged_sbom" --output-format json \
             --output-version "v${merge_version//./_}"

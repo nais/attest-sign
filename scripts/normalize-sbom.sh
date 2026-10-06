@@ -15,8 +15,8 @@
 # See https://github.com/aquasecurity/trivy/discussions/7532
 #
 # The work happens in a temp file that is renamed over the SBOM once, at the end,
-# so a failure leaves the original intact. JSON formatting is rewritten and
-# arrays are reordered.
+# so a failure leaves the original intact. SBOMs without the duplicates this
+# script fixes are left untouched; other SBOMs may be reformatted and reordered.
 #
 # Usage: normalize-sbom.sh <sbom.json>
 
@@ -32,6 +32,26 @@ fi
 if [ "$(jq -r '.bomFormat // ""' "$sbom")" != "CycloneDX" ]; then
   echo "normalize-sbom: not a CycloneDX BOM" >&2
   exit 1
+fi
+
+needs_normalization="$(jq -r '
+  def duplicated: length != (unique | length);
+  (
+    (.components | if type == "array"
+      then [.[] | ."bom-ref" | select(. != null)] | duplicated
+      else false end)
+    or
+    (.dependencies | if type == "array"
+      then ([.[] | .ref | select(. != null)] | duplicated)
+        or any(.[]; (.dependsOn | if type == "array" then duplicated else false end)
+                   or (.provides | if type == "array" then duplicated else false end))
+      else false end)
+  )
+' "$sbom")"
+
+if [ "$needs_normalization" = false ]; then
+  echo "normalize-sbom: no duplicates to fix; SBOM left unchanged"
+  exit 0
 fi
 
 # The jq rewrite lands in a temp file beside the SBOM; a single `mv` at the end
