@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.20](https://github.com/nais/attest-sign/compare/v2.0.19...v2.0.20) (2026-10-07)
+
+
+### Dependencies
+
+* **deps:** bump the all-deps group with 2 updates ([#113](https://github.com/nais/attest-sign/issues/113)) ([30c9a52](https://github.com/nais/attest-sign/commit/30c9a521f8991f3ddda2d2d425f83da1672a4f6c))
+* **deps:** bump the all-deps group with 2 updates ([#115](https://github.com/nais/attest-sign/issues/115)) ([c7d8c02](https://github.com/nais/attest-sign/commit/c7d8c02a65b51b0b1336d391fa1cf1c314ffdcf6))
+
 ## [2.0.19](https://github.com/nais/attest-sign/compare/v2.0.18...v2.0.19) (2026-09-23)
 
 
