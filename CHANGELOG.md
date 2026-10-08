@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/nais/attest-sign/compare/v2.0.20...v2.1.0) (2026-10-08)
+
+
+### Features
+
+* normalize and lint the SBOM before attesting ([#102](https://github.com/nais/attest-sign/issues/102)) ([de32b8e](https://github.com/nais/attest-sign/commit/de32b8e3133c8eec0358fff382f64168501ce478))
+
 ## [2.0.20](https://github.com/nais/attest-sign/compare/v2.0.19...v2.0.20) (2026-10-07)
 
 
