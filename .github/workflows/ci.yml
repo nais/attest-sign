@@ -134,7 +134,7 @@ jobs:
           echo "name=${name}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy preview to NAIS
-        uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891 # ratchet:nais/deploy/actions/deploy@v3
+        uses: nais/deploy/actions/deploy@033f70f2484ddfa91dc3d878e06ced3113f996ad # ratchet:nais/deploy/actions/deploy@v3
         env:
           CLUSTER: dev-gcp
           RESOURCE: test/nais.yml
