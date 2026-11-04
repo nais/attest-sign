@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/nais/attest-sign/compare/v2.1.1...v2.1.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* install Trivy directly from GitHub Releases ([#121](https://github.com/nais/attest-sign/issues/121)) ([b855a71](https://github.com/nais/attest-sign/commit/b855a7194c4e89762b0b8ee914846a40f51fa3b3))
+
 ## [2.1.1](https://github.com/nais/attest-sign/compare/v2.1.0...v2.1.1) (2026-10-29)
 
 
