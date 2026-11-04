@@ -92,7 +92,7 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 
 1. **Validation**: Ensures the image reference is in the correct format (`<image>@<digest>`)
 2. **Trivy Java DB Caching**: Fetches and caches the Trivy Java database using multiple repository mirrors to avoid rate limiting
-3. **SBOM Generation**: Uses Trivy (v0.74.0) to scan the image and generate a CycloneDX SBOM unless one is provided
+3. **SBOM Generation**: Uses a pinned Trivy release to scan the image and generate a CycloneDX SBOM unless one is provided
 4. **SBOM Merge**: Merges the primary SBOM with any extra CycloneDX SBOM files if `additional_sboms` is set
 5. **SBOM Normalization**: Unless `sbom_check: off`:
    - folds duplicate components (exact same `bom-ref`) into one, unioning their `properties`, and de-duplicates / merges `dependencies` and `dependsOn` entries. Trivy emits a package as several components sharing one `bom-ref` when it is present in multiple image layers, which makes the BOM invalid and causes downstream consumers such as Dependency-Track to reject the attestation.
@@ -104,7 +104,7 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 7. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
 8. **Output**: Returns the final SBOM path for downstream use
 
-If upstream Trivy installation fails, the action falls back to GitHub Releases and checks the download against pinned SHA-256 hashes before installation. This avoids the `get.trivy.dev` dependency in the upstream installer. Scan failures still fail the build; they do not trigger the fallback. When updating Trivy, update the versions in `action.yml` and the version and both architecture hashes in `scripts/install-trivy.sh`.
+If upstream Trivy installation fails, the action falls back to GitHub Releases and checks the download against pinned SHA-256 hashes before installation. This avoids the `get.trivy.dev` dependency in the upstream installer. Scan failures still fail the build; they do not trigger the fallback. When updating Trivy, change only the version and both architecture hashes in `scripts/trivy-release.sh`.
 
 ### Performance Optimization
 

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version='v0.74.0'
+# shellcheck source=scripts/trivy-release.sh
+source "$(dirname "${BASH_SOURCE[0]}")/trivy-release.sh"
+version="$TRIVY_VERSION"
 
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)
-    asset='trivy_0.74.0_Linux-64bit.tar.gz'
-    expected_sha='2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a'
+    asset="trivy_${version#v}_Linux-64bit.tar.gz"
+    expected_sha="$TRIVY_SHA256_AMD64"
     ;;
   Linux/aarch64 | Linux/arm64)
-    asset='trivy_0.74.0_Linux-ARM64.tar.gz'
-    expected_sha='b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5'
+    asset="trivy_${version#v}_Linux-ARM64.tar.gz"
+    expected_sha="$TRIVY_SHA256_ARM64"
     ;;
   *)
     echo "install-trivy: unsupported platform $(uname -s)/$(uname -m); need Linux x86_64 or arm64" >&2

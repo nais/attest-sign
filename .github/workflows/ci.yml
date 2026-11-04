@@ -126,7 +126,8 @@ jobs:
       - name: Verify version and generate SBOM
         run: |
           set -euo pipefail
-          trivy --version | grep -Fx 'Version: 0.74.0'
+          source scripts/trivy-release.sh
+          trivy --version | grep -Fx "Version: ${TRIVY_VERSION#v}"
           docker build -t attest-sign-trivy-test test
           docker save attest-sign-trivy-test -o "$RUNNER_TEMP/image.tar"
           trivy image --input "$RUNNER_TEMP/image.tar" --skip-db-update \

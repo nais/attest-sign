@@ -3,6 +3,8 @@ set -euo pipefail
 
 # shellcheck source=test/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/trivy-release.sh
+source "$repo/scripts/trivy-release.sh"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -13,7 +15,7 @@ cat > "$work/fixture/trivy" <<'EOF'
 set -euo pipefail
 echo executed >> "$TEST_EXECUTIONS"
 if [ "$TEST_MODE" = version-failure ]; then exit 1; fi
-echo 'Version: 0.74.0'
+printf 'Version: %s\n' "${TEST_VERSION#v}"
 EOF
 printf 'template\n' > "$work/fixture/contrib/html.tpl"
 chmod +x "$work/fixture/trivy"
@@ -63,18 +65,19 @@ export GITHUB_PATH="$work/github-path"
 export TEST_ARCHIVE="$work/fixture.tar.gz"
 export TEST_EXECUTIONS="$work/executions"
 export TEST_DOWNLOADS="$work/downloads"
+export TEST_VERSION="$TRIVY_VERSION"
 export TEST_OS=Linux TEST_MODE=success
 
 for TEST_ARCH in x86_64 aarch64 arm64; do
   export TEST_ARCH
   case "$TEST_ARCH" in
     x86_64)
-      asset='trivy_0.74.0_Linux-64bit.tar.gz'
-      export TEST_EXPECTED_SHA='2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a'
+      asset="trivy_${TRIVY_VERSION#v}_Linux-64bit.tar.gz"
+      export TEST_EXPECTED_SHA="$TRIVY_SHA256_AMD64"
       ;;
     *)
-      asset='trivy_0.74.0_Linux-ARM64.tar.gz'
-      export TEST_EXPECTED_SHA='b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5'
+      asset="trivy_${TRIVY_VERSION#v}_Linux-ARM64.tar.gz"
+      export TEST_EXPECTED_SHA="$TRIVY_SHA256_ARM64"
       ;;
   esac
   : > "$GITHUB_PATH"
@@ -84,14 +87,14 @@ for TEST_ARCH in x86_64 aarch64 arm64; do
   [ -x "$installed/trivy" ] || fail "$TEST_ARCH binary not installed"
   [ -f "$installed/contrib/html.tpl" ] || fail "$TEST_ARCH contrib not installed"
   assert_eq "$TEST_ARCH download URL" "$(cat "$TEST_DOWNLOADS")" \
-    "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/$asset"
-  assert_eq "$TEST_ARCH PATH precedence" "$(PATH="$installed:$PATH" trivy --version)" 'Version: 0.74.0'
+    "https://github.com/aquasecurity/trivy/releases/download/$TRIVY_VERSION/$asset"
+  assert_eq "$TEST_ARCH PATH precedence" "$(PATH="$installed:$PATH" trivy --version)" "Version: ${TRIVY_VERSION#v}"
   [ ! -f "$(dirname "$installed")/$asset" ] || fail "archive not cleaned up"
   rm -rf "$(dirname "$installed")"
 done
 
 export TEST_ARCH=x86_64
-export TEST_EXPECTED_SHA='2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a'
+export TEST_EXPECTED_SHA="$TRIVY_SHA256_AMD64"
 for TEST_MODE in download-failure checksum-failure version-failure unsupported; do
   export TEST_MODE
   export TEST_OS=Linux
