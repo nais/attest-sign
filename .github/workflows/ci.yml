@@ -104,6 +104,36 @@ jobs:
       - name: lint-sbom.sh
         run: bash test/lint-sbom-test.sh
 
+  trivy-install:
+    name: Trivy cold installation
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: install-trivy.sh tests
+        run: bash test/install-trivy-test.sh
+
+      - name: Install Trivy
+        run: bash scripts/install-trivy.sh
+
+      - name: Verify version and generate SBOM
+        run: |
+          set -euo pipefail
+          source scripts/trivy-release.sh
+          trivy --version | grep -Fx "Version: ${TRIVY_VERSION#v}"
+          docker build -t attest-sign-trivy-test test
+          docker save attest-sign-trivy-test -o "$RUNNER_TEMP/image.tar"
+          trivy image --input "$RUNNER_TEMP/image.tar" --skip-db-update \
+            --format cyclonedx --output "$RUNNER_TEMP/sbom.json"
+          jq -e '.bomFormat == "CycloneDX" and (.components | length > 0)' "$RUNNER_TEMP/sbom.json"
+
   deploy-preview:
     name: Deploy preview job to dev
     if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
