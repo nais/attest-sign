@@ -104,6 +104,8 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 7. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
 8. **Output**: Returns the final SBOM path for downstream use
 
+If upstream Trivy installation fails, the action falls back to GitHub Releases and checks the download against pinned SHA-256 hashes before installation. This avoids the `get.trivy.dev` dependency in the upstream installer. Scan failures still fail the build; they do not trigger the fallback. When updating Trivy, update the versions in `action.yml` and the version and both architecture hashes in `scripts/install-trivy.sh`.
+
 ### Performance Optimization
 
 - **Multi-mirror Java DB**: Automatically falls back through multiple registries if the primary source is unavailable or rate-limited

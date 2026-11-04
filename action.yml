@@ -114,6 +114,22 @@ runs:
         path: .trivy
         key: trivy-db-${{ steps.fetch-trivy-java-db-digest.outputs.TRIVY_JAVA_DB_DIGEST }}
 
+    - name: 'Install Trivy'
+      id: setup-trivy
+      if: inputs.sbom == 'auto-generate-for-me-please.json'
+      continue-on-error: true
+      uses: 'aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514' # ratchet:aquasecurity/setup-trivy@v0.2.6
+      with:
+        version: 'v0.74.0'
+        cache: 'true'
+
+    - name: 'Install Trivy from GitHub Releases (fallback)'
+      if: inputs.sbom == 'auto-generate-for-me-please.json' && steps.setup-trivy.outcome == 'failure'
+      shell: 'bash'
+      run: |
+        echo "::warning::Trivy setup failed; installing the pinned release directly from GitHub"
+        bash "$GITHUB_ACTION_PATH/scripts/install-trivy.sh"
+
     - name: 'Generate SBOM'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
       uses: 'aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25' # ratchet:aquasecurity/trivy-action@v0.36.0
@@ -121,6 +137,7 @@ runs:
         TRIVY_SKIP_DB_UPDATE: "true"
         TRIVY_JAVA_DB_REPOSITORY: "${{ inputs.trivy_java_db_repositories }}"
       with:
+        skip-setup-trivy: 'true'
         scan-type: 'image'
         format: 'cyclonedx'
         output: 'auto-generate-for-me-please.json'
