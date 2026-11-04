@@ -114,28 +114,10 @@ runs:
         path: .trivy
         key: trivy-db-${{ steps.fetch-trivy-java-db-digest.outputs.TRIVY_JAVA_DB_DIGEST }}
 
-    - name: 'Resolve Trivy version'
-      id: trivy-release
+    - name: 'Install Trivy from GitHub Releases'
       if: inputs.sbom == 'auto-generate-for-me-please.json'
       shell: 'bash'
       run: |
-        source "$GITHUB_ACTION_PATH/scripts/trivy-release.sh"
-        printf 'version=%s\n' "$TRIVY_VERSION" >> "$GITHUB_OUTPUT"
-
-    - name: 'Install Trivy'
-      id: setup-trivy
-      if: inputs.sbom == 'auto-generate-for-me-please.json'
-      continue-on-error: true
-      uses: 'aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514' # ratchet:aquasecurity/setup-trivy@v0.2.6
-      with:
-        version: '${{ steps.trivy-release.outputs.version }}'
-        cache: 'true'
-
-    - name: 'Install Trivy from GitHub Releases (fallback)'
-      if: inputs.sbom == 'auto-generate-for-me-please.json' && steps.setup-trivy.outcome == 'failure'
-      shell: 'bash'
-      run: |
-        echo "::warning::Trivy setup failed; installing the pinned release directly from GitHub"
         bash "$GITHUB_ACTION_PATH/scripts/install-trivy.sh"
 
     - name: 'Generate SBOM'
@@ -151,9 +133,6 @@ runs:
         output: 'auto-generate-for-me-please.json'
         image-ref: "${{ inputs.image_ref }}"
         cache-dir: ".trivy"
-        # Pin version to avoid unexpected issues with new releases
-        version: '${{ steps.trivy-release.outputs.version }}'
-
         # See https://github.com/yogeshlonkar/trivy-cache-action?tab=readme-ov-file#trivy-cache-action-
     - name: Fix .trivy permissions
       shell: 'bash'
