@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Tests for scripts/install-trivy.sh, using mocked platform and download tools.
+
 set -euo pipefail
 
 # shellcheck source=test/lib.sh
@@ -15,7 +18,7 @@ cat > "$work/fixture/trivy" <<'EOF'
 set -euo pipefail
 echo executed >> "$TEST_EXECUTIONS"
 if [ "$TEST_MODE" = version-failure ]; then exit 1; fi
-printf 'Version: %s\n' "${TEST_VERSION#v}"
+printf 'Version: %s\n' "${TRIVY_VERSION#v}"
 EOF
 printf 'template\n' > "$work/fixture/contrib/html.tpl"
 chmod +x "$work/fixture/trivy"
@@ -65,7 +68,6 @@ export GITHUB_PATH="$work/github-path"
 export TEST_ARCHIVE="$work/fixture.tar.gz"
 export TEST_EXECUTIONS="$work/executions"
 export TEST_DOWNLOADS="$work/downloads"
-export TEST_VERSION="$TRIVY_VERSION"
 export TEST_OS=Linux TEST_MODE=success
 
 for TEST_ARCH in x86_64 aarch64 arm64; do
