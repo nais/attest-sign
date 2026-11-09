@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.4](https://github.com/nais/attest-sign/compare/v2.1.3...v2.1.4) (2026-11-09)
+
+
+### Dependencies
+
+* **deps:** bump Cosign to v3.1.4 ([9d32d37](https://github.com/nais/attest-sign/commit/9d32d3735a8eaa3a3092d98b7ff7d1170030ce8a))
+
 ## [2.1.3](https://github.com/nais/attest-sign/compare/v2.1.2...v2.1.3) (2026-11-04)
 
 
