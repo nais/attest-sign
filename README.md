@@ -101,7 +101,7 @@ Use this when you want one combined CycloneDX SBOM with both image dependencies 
 
    In `warn` mode a normalization failure is logged and the SBOM is attested as-is; in `error` mode it fails the build.
 6. **SBOM Validation**: Unless `sbom_check: off`, runs CycloneDX schema validation and lint checks on the normalized SBOM. Findings come in two tiers: **problems** (schema-invalid BOM, or a dependency graph that references an unknown `bom-ref`) fail the build under `sbom_check: error`; **notes** (multiple components sharing a `purl` — which Trivy emits for multi-parent packages and which strict consumers such as Dependency-Track may reject — and CycloneDX spec versions outside the reviewed range 1.4–1.7) are reported for visibility but never fail the build. `warn` reports both tiers without failing.
-7. **Security Signing**: Uses cosign (v3.0.6) to sign the image and create attestations with the final SBOM
+7. **Security Signing**: Uses cosign (v3.1.4) to sign the image and create attestations with the final SBOM
 8. **Output**: Returns the final SBOM path for downstream use
 
 Trivy is installed directly from GitHub Releases and checked against pinned SHA-256 hashes before installation. This is a temporary workaround for the upstream installer's `get.trivy.dev` dependency. Installation and scan failures still fail the build. When updating Trivy, change only the version and both architecture hashes in `scripts/trivy-release.sh`.
