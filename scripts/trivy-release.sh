@@ -2,6 +2,6 @@
 #
 # Pinned Trivy release metadata. Source this file; do not run it.
 
-export TRIVY_VERSION='v0.76.1'
-export TRIVY_SHA256_AMD64='c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0'
-export TRIVY_SHA256_ARM64='e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f'
+export TRIVY_VERSION='v0.76.2'
+export TRIVY_SHA256_AMD64='bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf'
+export TRIVY_SHA256_ARM64='ab9d51f86e6a5fb936f605faff6b593ac51bc378fff4d3e8b9d58358b9c367c3'
