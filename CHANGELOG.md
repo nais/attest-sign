@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.5](https://github.com/nais/attest-sign/compare/v2.1.4...v2.1.5) (2026-11-11)
+
+
+### Dependencies
+
+* **deps:** bump the all-deps group with 3 updates ([#127](https://github.com/nais/attest-sign/issues/127)) ([4b83f01](https://github.com/nais/attest-sign/commit/4b83f0141d65ceb76856d16f8dd5408f95feeed0))
+* **deps:** bump Trivy to v0.76.2 ([#129](https://github.com/nais/attest-sign/issues/129)) ([5565616](https://github.com/nais/attest-sign/commit/55656163d866f7b474cae27c00e27eb66043c1a7))
+
 ## [2.1.4](https://github.com/nais/attest-sign/compare/v2.1.3...v2.1.4) (2026-11-09)
 
 
