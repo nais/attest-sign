@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.6](https://github.com/nais/attest-sign/compare/v2.1.5...v2.1.6) (2026-11-17)
+
+
+### Bug Fixes
+
+* **action:** harden workflow permissions and dependency pinning ([570f834](https://github.com/nais/attest-sign/commit/570f834d7fe93547657b9d307a30cc17d65e67d8))
+
 ## [2.1.5](https://github.com/nais/attest-sign/compare/v2.1.4...v2.1.5) (2026-11-11)
 
 
