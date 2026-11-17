@@ -5,6 +5,8 @@ on:
     branches:
       - main
 
+permissions: {}
+
 concurrency:
   group: attest-sign-integration-test-${{ github.ref }}
   cancel-in-progress: true
