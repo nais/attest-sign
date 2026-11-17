@@ -9,15 +9,16 @@ concurrency:
   group: release-please
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+permissions: {}
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
