@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.7](https://github.com/nais/attest-sign/compare/v2.1.6...v2.1.7) (2026-11-18)
+
+
+### Dependencies
+
+* **deps:** bump alpine in /test in the all-deps group ([6b4c153](https://github.com/nais/attest-sign/commit/6b4c153292bdd141443123b103fd8ab235b92705))
+* **deps:** bump nais/deploy/actions/deploy ([04a9aad](https://github.com/nais/attest-sign/commit/04a9aadba9c894203503a6cb39aa3344089ecb37))
+
 ## [2.1.6](https://github.com/nais/attest-sign/compare/v2.1.5...v2.1.6) (2026-11-17)
 
 
