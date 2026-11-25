@@ -40,7 +40,7 @@ jobs:
 
       - name: Push docker image to GAR
         id: docker_build_push
-        uses: nais/docker-build-push@ceabe305c64640175f133b7e59af6666b0a3c46c # ratchet:nais/docker-build-push@v0
+        uses: nais/docker-build-push@bfbdd06e303c63a7d697da6f391ffc6b81f60db2 # ratchet:nais/docker-build-push@v0
         with:
           team: nais-verification
           tag: ${{ steps.tags.outputs.image_tag }}
@@ -166,7 +166,7 @@ jobs:
           echo "name=${name}" >> "$GITHUB_OUTPUT"
 
       - name: Deploy preview to NAIS
-        uses: nais/deploy/actions/deploy@b1a9a40dae937091497f8f29c5ea5334cc1c0643 # ratchet:nais/deploy/actions/deploy@v3
+        uses: nais/deploy/actions/deploy@427e29c94d911626a023a76f402f6dcae1f840b7 # ratchet:nais/deploy/actions/deploy@v3
         env:
           CLUSTER: dev-gcp
           RESOURCE: test/nais.yml
