@@ -128,6 +128,7 @@ runs:
         TRIVY_JAVA_DB_REPOSITORY: "${{ inputs.trivy_java_db_repositories }}"
       with:
         skip-setup-trivy: 'true'
+        cache: 'false'
         scan-type: 'image'
         format: 'cyclonedx'
         output: 'auto-generate-for-me-please.json'
