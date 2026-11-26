@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.9](https://github.com/nais/attest-sign/compare/v2.1.8...v2.1.9) (2026-11-26)
+
+
+### Bug Fixes
+
+* avoid duplicate Trivy cache ([#140](https://github.com/nais/attest-sign/issues/140)) ([a9f5377](https://github.com/nais/attest-sign/commit/a9f537765cb48fcead76301d2731087edbac392e))
+
 ## [2.1.8](https://github.com/nais/attest-sign/compare/v2.1.7...v2.1.8) (2026-11-25)
 
 
